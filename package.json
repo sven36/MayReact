@@ -1,0 +1,17 @@
+{
+  "name": "mays",
+  "version": "1.0.0",
+  "description": "",
+  "main": "may.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "c",
+  "license": "MIT",
+  "devDependencies": {
+    "rollup": "^0.50.0"
+  },
+  "dependencies": {
+    "preact-compat": "^3.17.0"
+  }
+}
