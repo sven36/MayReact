@@ -9,6 +9,7 @@
   "author": "c",
   "license": "MIT",
   "devDependencies": {
+    "karma": "^1.7.1",
     "rollup": "^0.50.0"
   },
   "dependencies": {
