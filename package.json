@@ -4,13 +4,16 @@
   "description": "",
   "main": "may.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build":"rollup -c scripts/rollup.js"
   },
   "author": "c",
   "license": "MIT",
   "devDependencies": {
+    "babel-core": "^6.26.0",
     "karma": "^1.7.1",
-    "rollup": "^0.50.0"
+    "rollup": "^0.50.1",
+    "rollup-plugin-babel": "^3.0.2"
   },
   "dependencies": {
     "preact-compat": "^3.17.0"
