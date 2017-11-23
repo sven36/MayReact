@@ -9,6 +9,7 @@ export function createElement(type, config, children) {
     var props = {};
     var key = null;
     var ref = null;
+    var len =arguments.length-2;
     if (config) {
         key = config.key ? '' + config.key : null;
         ref = config.ref || null;
@@ -19,10 +20,10 @@ export function createElement(type, config, children) {
         }
     }
 
-    if (arguments.length > 2) {
-        var array = new Array(arguments.length - 2);
-        for (var i = 0; i < arguments.length; i++) {
-            array[i] = arguments[i + 2]
+    if (len > 1) {
+        var array = new Array(len);
+        for (var i = 0; i < len; i++) {
+            array[i] = arguments[i+2];
         }
         props.children = array;
     } else {
