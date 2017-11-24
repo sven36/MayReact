@@ -12,6 +12,8 @@
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-plugin-transform-es2015-classes": "^6.24.1",
     "babel-preset-env": "^1.6.1",
     "jasmine-core": "^2.8.0",
     "karma": "^1.7.1",
@@ -21,7 +23,7 @@
     "karma-webpack": "^2.0.6",
     "rollup": "^0.50.1",
     "rollup-plugin-babel": "^3.0.2",
-    "webpack": "^2.4.1"
+    "webpack": "^3.8.1"
   },
   "dependencies": {
     "preact-compat": "^3.17.0"
