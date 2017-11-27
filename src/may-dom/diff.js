@@ -108,7 +108,7 @@ function childrenDiff(dom, vchildren, context, mountAll, isHydrating) {
     var keyed = {};
     var keyedLen = 0;
     var min = 0;
-    var len = originalChildren.len;
+    var len = originalChildren.length;
     var childrenLen = 0;
     var vlen = vchildren ? vchildren.length : 0;
     var j, c, f, vchild, child;
@@ -127,7 +127,7 @@ function childrenDiff(dom, vchildren, context, mountAll, isHydrating) {
         }
     }
     if (vlen !== 0) {
-        for (let i = 0; i < len; i++) {
+        for (let i = 0; i < vlen; i++) {
             vchild = vchildren[i];
             child = null;
             // attempt to find a node based on key matching

@@ -27,7 +27,8 @@ export function createElement(type, config, children) {
         }
         props.children = array;
     } else {
-        props.children = children;
+        props.children = [];
+        props.children[0] = children;
     }
     return new Vnode(type, key, ref, props);
 }
