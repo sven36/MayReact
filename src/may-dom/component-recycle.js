@@ -58,10 +58,12 @@ export function buildComponentFromVNode(dom, vnode, context, mountAll) {
         isOwner = c.constructor === vnode.type;
     }
     if (c && isOwner && (!mountAll || c._component)) {
-
+		setComponentProps(c, props, ASYNC_RENDER, context, mountAll);
+		dom = c.base;
     } else {
         if (originalComponent && !isDirectOwner) {
-            //unmountComponent
+            // unmountComponent(originalComponent);
+			// dom = oldDom = null;
         }
     }
     c = createComponent(vnode.type, props, context);

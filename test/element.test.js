@@ -25,29 +25,34 @@ describe('may.js', () => {
       }
     }
     expect(C1.prototype.render).toHaveBeenCalled;
+    var container = document.createElement('div');
+    document.body.appendChild(container);
+    render(<C1 />, container);
   });
-  it('mayRender', () => {
+  /*it('mayRender', () => {
     spyOn(console, 'error');
     var container = document.createElement('div');
     class Child extends Component {
       render() {
-        return <div> {this.props.key} </div>;
+        return <div> {this.props.key}  {this.props.val} </div>;
       }
     }
     class Parent extends Component {
       render() {
         return (
           <div>
-            <Child key="0" />
-            <Child key="1" />
-            <Child key="2" />
+            666
+            <Child key="0" val="1" />
+            <Child key="1" val="2"  />
+            <Child key="2" val="3"  />
           </div>
         );
       }
     }
     render(<Parent />, container);
+    document.body.appendChild(container);
     expect(console.error.calls.count()).toBe(0);
-  });
+  });*/
 
 
 })

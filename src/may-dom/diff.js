@@ -14,7 +14,7 @@ export function flushMounts() {
     var c;
     while ((c = mounts.pop())) {
         // if (options.afterMount) options.afterMount(c);
-        if (c.componentDidMount) component.componentDidMount();
+        if (c.componentDidMount) c.componentDidMount();
     }
 }
 
@@ -84,7 +84,7 @@ function idiff(dom, vnode, context, mountAll, componentRoot) {
 
     var fc = out.firstChild;
     var props = out[ATTR_KEY];
-    var vchildren = vnode.children;
+    var vchildren = vnode.props.children;
 
     if (props == null) {
         props = out[ATTR_KEY] = {};
