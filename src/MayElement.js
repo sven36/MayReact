@@ -26,7 +26,7 @@ export function createElement(type, config, children) {
             array[i] = arguments[i+2];
         }
         props.children = array;
-    } else {
+    } else if(len===1){
         props.children = [];
         props.children[0] = children;
     }

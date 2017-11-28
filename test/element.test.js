@@ -28,13 +28,19 @@ describe('may.js', () => {
           isMemberPackage: false
       })
       }
+      componentWillMount(){
+        console.log('willMount');
+      }
 
       render() {
-        return <div onClick={this.bindClick}>C1<C2 />{this.props.val}</div>;
+        return <div onClick={this.bindClick}>C1<C2 />{this.props.val}<span>333</span></div>;
       }
     }
     const C2=()=>{
-      return <div>C2</div>;
+      return <div>C2<C3 /></div>;
+    }
+    const C3=()=>{
+      return <div>C3</div>;
     }
     expect(C1.prototype.render).toHaveBeenCalled;
     var container = document.createElement('div');
