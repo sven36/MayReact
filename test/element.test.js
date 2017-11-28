@@ -30,7 +30,7 @@ describe('may.js', () => {
       }
 
       render() {
-        return <div onClick={this.bindClick}>C1<C2 /></div>;
+        return <div onClick={this.bindClick}>C1<C2 />{this.props.val}</div>;
       }
     }
     const C2=()=>{
@@ -39,7 +39,7 @@ describe('may.js', () => {
     expect(C1.prototype.render).toHaveBeenCalled;
     var container = document.createElement('div');
     document.body.appendChild(container);
-    render(<C1 />, container);
+    render(<C1 val={"233"} />, container);
   });
   it('mayRender', () => {
     spyOn(console, 'error');
