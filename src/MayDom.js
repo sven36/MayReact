@@ -47,7 +47,7 @@ export function render(vnode, container, merge) {
  */
 var renderByMay = function (vnode, container, callback) {
 	var props = vnode.props;
-	var rendered = renderRootComponent(vnode, props, context);
+	var rendered = renderRootComponent(vnode, props, {});
 	container.appendChild(rendered);
 }
 
@@ -65,25 +65,33 @@ function renderRootComponent(vnode, props, context) {
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
 		if (component.componentWillMount) component.componentWillMount();
-	} else { //Stateless Function
+	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		component.constructor = Ctor;
 		component.render = doRender;
 	}
 	var renderedVnode = component.render(props, context);
 	var nodeName = renderedVnode.type;
 	var rootDom = document.createElement(nodeName);
+	//递归子节点 添加到container
 	var vchildren = renderedVnode.props.children;
 	var c;
 	while ((c = vchildren.shift())) {
+
+		if(c&&c.type&&(typeof c.type==='function')){
+			var component=buildComponentFromVNode(c);
+			cdom=document.createElement(component.type);
+			renderComponentChildren(component,cdom);
+		}
 		var type = typeof c;
 		var cdom;
 		switch (type) {
-			case 'string':
+			case 'string'://string子节点
 			case 'number':
 				cdom = document.createTextNode(c);
 				dom.appendChild(cdom);
 				break;
-			case 'object':
+			case 'object'://vnode 子节点
+
 				cdom = buildDomFromVnode(c, rootDom);
 				break;
 		}
@@ -94,63 +102,66 @@ function renderRootComponent(vnode, props, context) {
 	return rootDom;
 }
 
-function renderChildrenComponent(vnode, parent) {
-	var vchildren = vnode.props.children || undefined;
-	var vtype = typeof vnode.type;
-	var vlen = vchildren ? vchildren.length : undefined;
-	var c, cdom;
-	switch (vtype) {
-		case 'string':
-		case 'number':
-			cdom = document.createTextNode(c);
+function renderComponentChildren(component, parent) {
+	var children = component.props.children || undefined;
+	var len = children ? children.length : 0;
+	var cdom;
+	for (const c in children) {
+		if(c&&!c.type){
+			cdom=document.createTextNode(c);
 			parent.appendChild(cdom);
-			break;
-		case 'object':
-			renderChildrenComponent()
-			break;
-		case 'function':
-			buildDomFromComponent(vnode, parent)
-			break;
+		}else if(typeof c.type==='string'){
+			cdom=document.createElement(c.type);
+			renderComponentChildren(c,cdom);
+		}else{//component
+			buildComponentFromVNode(c,parent);
+		}
+
 	}
 
 }
 
-function buildDomFromVnode(vnode, parent) {
-	var Ctor = vnode.type;
+function buildComponentFromVnode(vnode, parent) {
 	var props = vnode.props;
 	var context = vnode.context;
-	var component; //= new Ctor(props, context);如果是函数式组件不需要生命周期方法所以无需 继承
+	var component, nodeName;
+	var Ctor = vnode.type;
 	//Component  PureComponent
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
 		component = new Ctor(props, context);
 		if (component.componentWillMount) component.componentWillMount();
-	} else { //Stateless Function 函数式组件无需要生命周期方法
+	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		component = Ctor.call(vnode, props, context);
 		// component.constructor = Ctor;
 		// component.render = doRender;
 	}
-	var nodeName = component.type;
-	var dom = document.createElement(nodeName);
-	var vchildren = component.props.children;
-	var c;
-	while ((c = vchildren.shift())) {
-		var type = typeof c;
-		var cdom;
-		switch (type) {
-			case 'string':
-			case 'number':
-				cdom = document.createTextNode(c);
-				dom.appendChild(cdom);
-				break;
-			case 'object':
-				if (parent) parent.appendChild(dom);
-				cdom = renderChildrenComponent(c, dom);
-				break;
-		}
-		cdom = null;
-		type = null;
-	}
+	return component;
+	// nodeName = component.type;
+	// var dom = document.createElement(nodeName);
+	// var vchildren = component.props.children;
+	// var c;
+	// while ((c = vchildren.shift())) {
+	// 	var type = typeof c;
+	// 	var cdom;
+	// 	switch (type) {
+	// 		case 'string':
+	// 		case 'number':
+	// 			cdom = document.createTextNode(c);
+	// 			dom.appendChild(cdom);
+	// 			break;
+	// 		case 'object':
+	// 			if (parent) parent.appendChild(dom);
+	// 			cdom = renderChildrenComponent(c, dom);
+	// 			break;
+	// 	}
+	// 	cdom = null;
+	// 	type = null;
+	// }
+
+
+
+
 }
 
 function doRender() {

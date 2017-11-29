@@ -33,7 +33,7 @@ describe('may.js', () => {
       }
 
       render() {
-        return <div onClick={this.bindClick}>C1<C2 />{this.props.val}<span>333</span></div>;
+        return <div onClick={this.bindClick}><span>333</span>C1<C2 />{this.props.val}</div>;
       }
     }
     const C2=()=>{
