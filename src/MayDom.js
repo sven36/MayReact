@@ -1,5 +1,6 @@
-
-import { diff } from './may-dom/diff';
+import {
+	diff
+} from './may-dom/diff';
 
 export function render(vnode, container, merge) {
 	// return diff(merge, vnode, {}, false, container, false);
@@ -45,15 +46,11 @@ export function render(vnode, container, merge) {
  * @param {*} callback 
  */
 var renderByMay = function (vnode, container, callback) {
-	buildRootComponentFromVnode(vnode, container, {})
-}
-
-function buildRootComponentFromVnode(vnode, container, context) {
 	var props = vnode.props;
 	var rendered = renderRootComponent(vnode, props, context);
 	container.appendChild(rendered);
-
 }
+
 /**
  * 
  * @param {Component} Ctor //Component构造函数   Component原型对象绑定了传入的render,componentWillMount,onClick等方法
@@ -68,13 +65,13 @@ function renderRootComponent(vnode, props, context) {
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
 		if (component.componentWillMount) component.componentWillMount();
-	} else {//Stateless Function
+	} else { //Stateless Function
 		component.constructor = Ctor;
 		component.render = doRender;
 	}
 	var renderedVnode = component.render(props, context);
 	var nodeName = renderedVnode.type;
-	var dom = document.createElement(nodeName);
+	var rootDom = document.createElement(nodeName);
 	var vchildren = renderedVnode.props.children;
 	var c;
 	while ((c = vchildren.shift())) {
@@ -87,17 +84,16 @@ function renderRootComponent(vnode, props, context) {
 				dom.appendChild(cdom);
 				break;
 			case 'object':
-				cdom = renderChildrenComponent(c, dom);
+				cdom = buildDomFromVnode(c, rootDom);
 				break;
 		}
 		cdom = null;
 		type = null;
 	}
 
-
-	return dom;
-
+	return rootDom;
 }
+
 function renderChildrenComponent(vnode, parent) {
 	var vchildren = vnode.props.children || undefined;
 	var vtype = typeof vnode.type;
@@ -118,7 +114,8 @@ function renderChildrenComponent(vnode, parent) {
 	}
 
 }
-function buildDomFromComponent(vnode, parent) {
+
+function buildDomFromVnode(vnode, parent) {
 	var Ctor = vnode.type;
 	var props = vnode.props;
 	var context = vnode.context;
@@ -128,7 +125,7 @@ function buildDomFromComponent(vnode, parent) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
 		component = new Ctor(props, context);
 		if (component.componentWillMount) component.componentWillMount();
-	} else {//Stateless Function 函数式组件无需要生命周期方法
+	} else { //Stateless Function 函数式组件无需要生命周期方法
 		component = Ctor.call(vnode, props, context);
 		// component.constructor = Ctor;
 		// component.render = doRender;
@@ -155,6 +152,7 @@ function buildDomFromComponent(vnode, parent) {
 		type = null;
 	}
 }
+
 function doRender() {
 	return this.constructor.apply(this, arguments);
 }
