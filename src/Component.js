@@ -1,8 +1,10 @@
 
 
 
-export function Component(props,context){
+export function Component(props,key,ref,context){
     this.props=props;
+    this.key=key;
+    this.ref=ref;
     this.context=context;
 }
 
