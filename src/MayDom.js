@@ -50,16 +50,23 @@ export function render(vnode, container, merge) {
  */
 var renderByMay = function (vnode, container, callback) {
 	var renderedComponent, rootDom;
-	if (vnode && vnode.type && (typeof vnode.type === 'function')) {
-		renderedComponent = buildComponentFromVnode(vnode);
-		rootDom = document.createElement(renderedComponent.type);
-		renderComponentChildren(renderedComponent, rootDom);
+	if (vnode && vnode.type) {
+		if (typeof vnode.type === 'function') {
+			renderedComponent = buildComponentFromVnode(vnode);
+			rootDom = document.createElement(renderedComponent.type);
+			renderComponentChildren(renderedComponent, rootDom);
+		} else if (typeof vnode.type === 'string') {
+			rootDom = document.createElement(vnode.type)
+			renderComponentChildren(vnode, rootDom);
+		}
 	} else {
 		console.error('render参数错误');
 		return;
 	}
-	if (container && rootDom) {
+	if (container &&container.appendChild && rootDom) {
 		container.appendChild(rootDom);
+	}else{
+		throw new Error('container参数错误');
 	}
 }
 
@@ -105,7 +112,7 @@ function buildComponentFromVnode(vnode) {
 	//Component  PureComponent
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
-		component = new Ctor(props,key,ref,context);
+		component = new Ctor(props, key, ref, context);
 		if (component.componentWillMount) component.componentWillMount();
 		renderedComponent = component.render(props, context);
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
