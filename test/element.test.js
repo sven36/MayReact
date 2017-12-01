@@ -50,15 +50,23 @@ describe('may.js', () => {
   it('mayRender', () => {
     spyOn(console, 'error');
     var container = document.createElement('div');
-    class Child extends Component {
-      render() {
-        return <div> {this.props.key}  {this.props.val} </div>;
-      }
-    }
+	  class Child extends Component {
+		  render() {
+			  return (
+				  <div>
+					{this.props.key}
+					  {this.props.val}
+				  </div>);
+		  }
+	  }
     class Parent extends Component {
+		onFocus(){
+			this.refs.inputRef.focus()
+		   }
       render() {
         return (
-          <div>
+          <div className="mystyle">
+			  <input ref="inputRef" type="text" />
             666
             <Child key="0" val="1" />
             <Child key="1" val="2"  />
