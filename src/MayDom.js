@@ -1,13 +1,13 @@
-// import {
-// 	diff
-// } from './may-dom/diff';
-// import {
-// 	renderComponent
-// } from './may-dom/component-recycle';
+import {
+	diff
+} from './may-dom/diff';
+import {
+	renderComponent
+} from './may-dom/component-recycle';
 
 export function render(vnode, container, merge) {
-	// return diff(merge, vnode, {}, false, container, false);
-	return renderByMay(vnode, container, merge);
+	return diff(merge, vnode, {}, false, container, false);
+	// return renderByMay(vnode, container, merge);
 }
 /**
  * render传入的都是一个function 该方法的原型对象上绑定了render方法
@@ -30,9 +30,9 @@ var renderByMay = function (vnode, container, callback) {
 		console.error('render参数错误');
 		return;
 	}
-	if (container &&container.appendChild && rootDom) {
+	if (container && container.appendChild && rootDom) {
 		container.appendChild(rootDom);
-	}else{
+	} else {
 		throw new Error('container参数错误');
 	}
 }
@@ -41,6 +41,8 @@ var renderByMay = function (vnode, container, callback) {
 
 function renderComponentChildren(component, parent) {
 	var children = component.props.children || undefined;
+	var props = component.props;
+	setDomAttr(parent, props);
 	var cdom, c;
 	if (children) {
 		for (let i = 0; i < children.length; i++) {
@@ -93,6 +95,26 @@ function doRender() {
 	return this.constructor.apply(this, arguments);
 }
 
+function setDomAttr(dom, props) {
+	var nodeType = dom.nodeType;
+	// Don't get/set attributes on text, comment and attribute nodes
+	if (nodeType === 3 || nodeType === 8 || nodeType === 2) {
+		return;
+	}
+	for (const key in props) {
+		if (key !== 'children' && key !== 'className' &&key!=='key') {
+			dom.setAttribute(key, props[key]);
+		}
+	}
+	if(props['className']){
+		dom.setAttribute('class', props['className']);
+	}
+	
+	// var currentVal = dom.getAttribute(name);
+
+}
+
+
 /**
  * //如果看不懂递归渲染节点  最好自己从根节点开始写 慢慢迭代 抽出公共方法
  * @param {Component} Ctor //Component构造函数   Component原型对象绑定了传入的render,componentWillMount,onClick等方法
@@ -142,3 +164,5 @@ function renderRootComponent(vnode, props, context) {
 
 	return rootDom;
 } */
+
+

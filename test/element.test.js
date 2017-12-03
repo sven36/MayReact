@@ -65,7 +65,7 @@ describe('may.js', () => {
 		   }
       render() {
         return (
-          <div className="mystyle">
+          <div className="mystyle" style={{width:'40%',marginLeft:'30px'}}>
 			  <input ref="inputRef" type="text" />
             666
             <Child key="0" val="1" />
