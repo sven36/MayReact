@@ -1,4 +1,5 @@
 import {reRender} from './MayDom';
+import {dirtyComponents} from './may-dom/render-queue';
 
 
 export function Component(props,key,ref,context){
@@ -10,8 +11,13 @@ export function Component(props,key,ref,context){
 
 Component.prototype.setState=function(state,callback){
     this._dirty=true;
-    this._updateState=state;
-    reRender(this);
-    // this._pendingState.push(state);
+    if(this._mergeStateQueue){
+        this._mergeStateQueue.push(state);
+    }else{
+        this._mergeStateQueue=new Array(state);
+    }
+    if(dirtyComponents.indexOf(this)===-1){
+        dirtyComponents.push(this);
+    }
     
 }

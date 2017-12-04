@@ -11,6 +11,9 @@
 //   }
   import {Component} from "../dist/React";
   import React from "../dist/React";
+
+//   import {Component} from "../dist/preact";
+//   import React from "../dist/preact";
   
 //   var ReactDOM = {
 //     render: render
@@ -37,6 +40,52 @@ describe("ReactComponent", function() {
         //     instance = ReactTestUtils.renderIntoDocument(instance);
         // }).toThrow();
     });
+    it('mayRender', () => {
+        spyOn(console, 'error');
+        var container = document.createElement('div');
+          class Child extends Component {
+            //   constructor(props){
+            // 	  super(props);
+            // 	  this.state={val2:'I wonder'};
+            //   }
+                
+              render() {
+                  return (
+                      <div>
+                        {/* {this.state.val2} */}
+                        {this.props.key}
+                          {this.props.val}
+                      </div>);
+              }
+          }
+        class Parent extends Component {
+            constructor(){
+                super();
+                this.state={val:'I wonder'};
+                this.Change=this.Change.bind(this);
+            }
+            Change(){
+                this.setState({val:'I see'});
+            }
+            onFocus(){
+                this.refs.inputRef.focus()
+               }
+          render() {
+            return (
+              <div className="mystyle" style={{width:'40%',marginLeft:'30px'}}>
+                  <input  onChange={this.Change} type="text" />
+                666&nbsp; {this.state.val}
+                <Child key="0" val="1" />
+                <Child key="1" val="2"  />
+                <Child key="2" val="3"  />
+              </div>
+            );
+          }
+        }
+        React.render(<Parent />, container);
+        document.body.appendChild(container);
+        expect(console.error.calls.count()).toBe(0);
+      });
     //  it("should warn when children are mutated during render", () => {
     //     function Wrapper(props) {
     //         props.children[1] = <p key={1} />; // Mutation is illegal
