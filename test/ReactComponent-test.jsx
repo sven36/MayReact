@@ -1,34 +1,35 @@
-import {
-    createElement
-  } from '../src/May';
-  import {
-    Component
-  } from '../src/Component';
-  import { render } from '../src/MayDom';
+// import {
+//     createElement
+//   } from '../src/May';
+//   import {
+//     Component
+//   } from '../src/Component';
+//   import { render } from '../src/MayDom';
   import ReactTestUtils from '../lib/ReactTestUtils';
 //   var React = {
 //     createElement: createElement
 //   }
+  import {Component} from "../dist/React";
   import React from "../dist/React";
   
-  var ReactDOM = {
-    render: render
-  }
+//   var ReactDOM = {
+//     render: render
+//   }
 //https://github.com/facebook/react/blob/master/src/isomorphic/children/__tests__/ReactChildren-test.js
 describe("ReactComponent", function() {
     // this.timeout(200000);
 
-    it("should throw on invalid render targets", () => {
-        var container = document.createElement("div");
-        // jQuery objects are basically arrays; people often pass them in by mistake
-        expect(function() {
-            ReactDOM.render(<div />, [container]);
-        }).toThrowError(/container参数错误/);
+    // it("should throw on invalid render targets", () => {
+    //     var container = document.createElement("div");
+    //     // jQuery objects are basically arrays; people often pass them in by mistake
+    //     expect(function() {
+    //         ReactDOM.render(<div />, [container]);
+    //     }).toThrowError(/container参数错误/);
 
-        expect(function() {
-            ReactDOM.render(<div />, null);
-        }).toThrowError(/container参数错误/);
-    });
+    //     expect(function() {
+    //         ReactDOM.render(<div />, null);
+    //     }).toThrowError(/container参数错误/);
+    // });
 
    it("should throw when supplying a ref outside of render method", () => {
         var instance = <div ref="badDiv" />;
@@ -36,7 +37,6 @@ describe("ReactComponent", function() {
         //     instance = ReactTestUtils.renderIntoDocument(instance);
         // }).toThrow();
     });
-
     //  it("should warn when children are mutated during render", () => {
     //     function Wrapper(props) {
     //         props.children[1] = <p key={1} />; // Mutation is illegal

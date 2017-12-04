@@ -1,4 +1,4 @@
-
+import {reRender} from './MayDom';
 
 
 export function Component(props,key,ref,context){
@@ -9,7 +9,9 @@ export function Component(props,key,ref,context){
 }
 
 Component.prototype.setState=function(state,callback){
-
-    this._pendingState.push(state);
+    this._dirty=true;
+    this._updateState=state;
+    reRender(this);
+    // this._pendingState.push(state);
     
 }

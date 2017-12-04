@@ -1,16 +1,16 @@
-import {
-	diff
-} from './may-dom/diff';
-import {
-	renderComponent
-} from './may-dom/component-recycle';
+// import {
+// 	diff
+// } from './may-dom/diff';
+// import {
+// 	renderComponent
+// } from './may-dom/component-recycle';
 
 export function render(vnode, container, merge) {
-	return diff(merge, vnode, {}, false, container, false);
-	// return renderByMay(vnode, container, merge);
+	// return diff(merge, vnode, {}, false, container, false);
+	return renderByMay(vnode, container, merge);
 }
 /**
- * render传入的都是一个function 该方法的原型对象上绑定了render方法
+ * render传入的Component都是一个function 该方法的原型对象上绑定了render方法
  * @param {*} vnode 
  * @param {*} container 
  * @param {*} callback 
@@ -103,7 +103,13 @@ function setDomAttr(dom, props) {
 	}
 	for (const key in props) {
 		if (key !== 'children' && key !== 'className' &&key!=='key') {
-			dom.setAttribute(key, props[key]);
+			if(key.indexOf('on')!==0){
+				dom.setAttribute(key, props[key]);
+			}else{
+				var e=key.substring(2).toLowerCase();
+				dom.addEventListener(e,eventProxy);
+				(dom._listener||(dom._listener={}))[e]=props[key];
+			}
 		}
 	}
 	if(props['className']){
@@ -112,6 +118,13 @@ function setDomAttr(dom, props) {
 	
 	// var currentVal = dom.getAttribute(name);
 
+}
+function eventProxy(e) {
+	return this._listener[e.type](e);
+}
+export function reRender(component) {
+	var props=component.props;
+	var state=component.state;
 }
 
 

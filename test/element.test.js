@@ -51,23 +51,37 @@ describe('may.js', () => {
     spyOn(console, 'error');
     var container = document.createElement('div');
 	  class Child extends Component {
+		//   constructor(props){
+		// 	  super(props);
+		// 	  this.state={val2:'I wonder'};
+		//   }
+			
 		  render() {
 			  return (
 				  <div>
+					{/* {this.state.val2} */}
 					{this.props.key}
 					  {this.props.val}
 				  </div>);
 		  }
 	  }
     class Parent extends Component {
+		constructor(){
+			super();
+			this.state={val:'I wonder'};
+			this.Change=this.Change.bind(this);
+		}
+		Change(){
+			this.setState({val:'I see'});
+		}
 		onFocus(){
 			this.refs.inputRef.focus()
 		   }
       render() {
         return (
           <div className="mystyle" style={{width:'40%',marginLeft:'30px'}}>
-			  <input ref="inputRef" type="text" />
-            666
+			  <input ref="inputRef" onChange={this.Change} type="text" />
+            666&nbsp; {this.state.val}
             <Child key="0" val="1" />
             <Child key="1" val="2"  />
             <Child key="2" val="3"  />
