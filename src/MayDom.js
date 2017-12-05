@@ -1,3 +1,7 @@
+import {
+	extend
+} from "./may-dom/render-utils";
+
 // import {
 // 	diff
 // } from './may-dom/diff';
@@ -16,14 +20,16 @@ export function render(vnode, container, merge) {
  * @param {*} callback 
  */
 var renderByMay = function (vnode, container, callback) {
-	var renderedComponent, rootDom;
+	var renderedVnode, rootDom;
+
 	if (vnode && vnode.type) {
 		if (typeof vnode.type === 'function') {
-			renderedComponent = buildComponentFromVnode(vnode);
-			rootDom = document.createElement(renderedComponent.type);
-			renderComponentChildren(renderedComponent, rootDom);
+			renderedVnode = buildComponentFromVnode(vnode);
+			rootDom = document.createElement(renderedVnode.type);
+			renderComponentChildren(renderedVnode, rootDom);
+			renderedVnode.component.updater && (renderedVnode.component.updater._hostNode = rootDom);
 		} else if (typeof vnode.type === 'string') {
-			rootDom = document.createElement(vnode.type)
+			rootDom = document.createElement(vnode.type);
 			renderComponentChildren(vnode, rootDom);
 		}
 	} else {
@@ -40,6 +46,9 @@ var renderByMay = function (vnode, container, callback) {
 
 
 function renderComponentChildren(component, parent) {
+	//component实例化的DOM setState需要知道其真实DOM 然后diff其children
+	// component._hostNode = parent;
+
 	var children = component.props.children || undefined;
 	var props = component.props;
 	setDomAttr(parent, props);
@@ -53,15 +62,16 @@ function renderComponentChildren(component, parent) {
 					cdom = document.createTextNode(c);
 					parent.appendChild(cdom);
 					break;
-				case 'object'://vnode
+				case 'object': //vnode
 					if (typeof c.type === 'string') {
 						cdom = document.createElement(c.type);
 						renderComponentChildren(c, cdom);
 					} else {
 						//component  vnode.type 为function
-						var renderedComponent = buildComponentFromVnode(c);
-						cdom = document.createElement(renderedComponent.type);
-						renderComponentChildren(renderedComponent, cdom);
+						var renderedVnode = buildComponentFromVnode(c);
+						cdom = document.createElement(renderedVnode.type);
+						renderComponentChildren(renderedVnode, cdom);
+						renderedVnode.component.updater && (renderedVnode.component.updater._hostNode = cdom);
 					}
 					parent.appendChild(cdom);
 				case 'undefined':
@@ -77,18 +87,26 @@ function buildComponentFromVnode(vnode) {
 	var key = vnode.key;
 	var ref = vnode.ref;
 	var context = vnode.context;
-	var component, renderedComponent;
+	var component, renderedVnode;
 	var Ctor = vnode.type;
 	//Component  PureComponent
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
 		component = new Ctor(props, key, ref, context);
+
 		if (component.componentWillMount) component.componentWillMount();
-		renderedComponent = component.render(props, context);
+		renderedVnode = component.render(props, context);
+
+		//后加 vnode.type === 'function' 代表其为Component Component中才能setState
+		//setState会触发reRender 故只需对Comonent添加一个updater 保存有助于domDiff的参数
+		component.updater = {};
+		component.updater.renderedVnode = renderedVnode;
+		renderedVnode.component = component;
+		//
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
-		renderedComponent = Ctor.call(vnode, props, context);
+		renderedVnode = Ctor.call(vnode, props, context);
 	}
-	return renderedComponent;
+	return renderedVnode;
 }
 
 function doRender() {
@@ -102,30 +120,65 @@ function setDomAttr(dom, props) {
 		return;
 	}
 	for (const key in props) {
-		if (key !== 'children' && key !== 'className' &&key!=='key') {
-			if(key.indexOf('on')!==0){
+		if (key !== 'children' && key !== 'className' && key !== 'key') {
+			if (key.indexOf('on') !== 0) {
 				dom.setAttribute(key, props[key]);
-			}else{
-				var e=key.substring(2).toLowerCase();
-				dom.addEventListener(e,eventProxy);
-				(dom._listener||(dom._listener={}))[e]=props[key];
+			} else {
+				var e = key.substring(2).toLowerCase();
+				dom.addEventListener(e, eventProxy);
+				(dom._listener || (dom._listener = {}))[e] = props[key];
 			}
 		}
 	}
-	if(props['className']){
+	if (props['className']) {
 		dom.setAttribute('class', props['className']);
 	}
-	
+
 	// var currentVal = dom.getAttribute(name);
 
 }
+
 function eventProxy(e) {
 	return this._listener[e.type](e);
 }
 export function reRender(component) {
-	var props=component.props;
-	var state=component.state;
+	var props = component.props;
+	var context = component.context;
+	var prevstate = component.state;
+	var prevChildren = component.updater.renderedVnode.props.children;
+	var hostNode = component.updater._hostNode;
+	var updateState = {};
+	for (var i = 0; i < component._mergeStateQueue.length; i++) {
+		updateState = extend(updateState, component._mergeStateQueue[i]);
+	}
+	component.state = updateState;
+	var updatedVnode = component.render(props, context);
+	component.updater.renderedVnode = updatedVnode;
+
+	mayDiff(prevChildren, updatedVnode.props.children, hostNode);
+
 }
+
+function mayDiff(prevChildren, newChildren, parent) {
+	var keyQueue = [];
+	for (var i = 0; i < prevChildren.length; i++) {
+		var key = genKey(prevChildren[i]);
+		keyQueue[i] = {key:prevChildren[i]};
+	}
+	for (let _i = 0; _i < newChildren.length; _i++) {
+		var key = genKey(newChildren[i]);
+	}
+
+}
+
+function genKey(child) {
+	return child.key || child.type;
+}
+
+function isSameType(prev, now) {
+
+}
+
 
 
 /**
@@ -177,5 +230,3 @@ function renderRootComponent(vnode, props, context) {
 
 	return rootDom;
 } */
-
-

@@ -26,7 +26,8 @@ export function isNamedNode(node, nodeName) {
 export function extend(target, src) {
     for (var key in src) {
         target[key] = src[key];
-    }
+	}
+	return target;
 }
 export function getNodeProps(vnode) {
     // var props

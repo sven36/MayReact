@@ -1,5 +1,5 @@
 import {reRender} from './MayDom';
-import {dirtyComponents} from './may-dom/render-queue';
+import {dirtyComponents, flushUpdates} from './may-dom/render-queue';
 
 
 export function Component(props,key,ref,context){
@@ -19,5 +19,5 @@ Component.prototype.setState=function(state,callback){
     if(dirtyComponents.indexOf(this)===-1){
         dirtyComponents.push(this);
     }
-    
+    flushUpdates();
 }
