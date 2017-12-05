@@ -72,13 +72,12 @@ describe("ReactComponent", function() {
                }
           render() {
             return (
-              <div className="mystyle" style={{width:'40%',marginLeft:'30px'}}>
-                  <input  onChange={this.Change} type="text" />
-                666&nbsp; {this.state.val}
-                <Child key="0" val="1" />
-                <Child key="1" val="2"  />
-                <Child key="2" val="3"  />
-              </div>
+				<div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
+					<input  onChange={this.Change} type="text" value={this.state.val} />
+					666&nbsp; {this.state.val}
+					{this.state.val === 'I wonder' ? <Child key="0" val="1" /> : <Child key="1" val="2" />}
+					{this.state.val !== 'I wonder' && <Child key="0" val="1" />}
+				</div>
             );
           }
         }

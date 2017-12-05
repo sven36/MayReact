@@ -1,5 +1,5 @@
 import {
-	extend
+	extend, isSameNodeType
 } from "./may-dom/render-utils";
 
 // import {
@@ -152,6 +152,13 @@ export function reRender(component) {
 		updateState = extend(updateState, component._mergeStateQueue[i]);
 	}
 	component.state = updateState;
+	if (component.shouldComponentUpdate && component.shouldComponentUpdate(props, component.state, context) == false) {
+		return;
+	}
+	if (component.componentWillUpdate) {
+		component.componentWillUpdate(props, component.state, context);
+	}
+
 	var updatedVnode = component.render(props, context);
 	component.updater.renderedVnode = updatedVnode;
 
@@ -161,12 +168,15 @@ export function reRender(component) {
 
 function mayDiff(prevChildren, newChildren, parent) {
 	var keyQueue = [];
-	for (var i = 0; i < prevChildren.length; i++) {
-		var key = genKey(prevChildren[i]);
-		keyQueue[i] = {key:prevChildren[i]};
-	}
+	// for (var i = 0; i < prevChildren.length; i++) {
+	// 	var key = genKey(prevChildren[i]);
+	// 	keyQueue[i] = {key:prevChildren[i]};
+	// }
+
 	for (let _i = 0; _i < newChildren.length; _i++) {
-		var key = genKey(newChildren[i]);
+		if (!isSameType(prevChildren[i], newChildren[i])) {
+
+		}
 	}
 
 }
@@ -176,7 +186,7 @@ function genKey(child) {
 }
 
 function isSameType(prev, now) {
-
+	return prev.type === now.type && prev.key === now.key;
 }
 
 
