@@ -1,5 +1,6 @@
 import {
-	extend, isSameNodeType
+	extend,
+	isSameNodeType
 } from "./may-dom/render-utils";
 
 // import {
@@ -65,6 +66,7 @@ function renderComponentChildren(component, parent) {
 				case 'object': //vnode
 					if (typeof c.type === 'string') {
 						cdom = document.createElement(c.type);
+						c._hostNode = cdom;
 						renderComponentChildren(c, cdom);
 					} else {
 						//component  vnode.type 为function
@@ -167,18 +169,48 @@ export function reRender(component) {
 }
 
 function mayDiff(prevChildren, newChildren, parent) {
-	var keyQueue = [];
-	// for (var i = 0; i < prevChildren.length; i++) {
-	// 	var key = genKey(prevChildren[i]);
-	// 	keyQueue[i] = {key:prevChildren[i]};
-	// }
+	var keyStore = {};
+	var childNodes = parent.childNodes;
+	for (var i = 0; i < prevChildren.length; i++) {
+		var _key = prevChildren[i].key;
+		if (_key) {
+			keyStore[_key] = prevChildren[i];
+		}
+	}
+	//长度未变化
+	if (prevChildren.length === newChildren.length) {
+		for (let _i = 0; _i < newChildren.length; _i++) {
+			var child = newChildren[_i];
+			//具备相同Type或key 认为其为改变diff其props
+			if (isSameType(prevChildren[_i], newChildren[_i])) {
+				diffProps(prevChildren[_i], newChildren[_i]);
+			} else {
 
-	for (let _i = 0; _i < newChildren.length; _i++) {
+			}
+		}
+	}
+
+	for (let _i2 = 0; _i2 < newChildren.length; _i2++) {
+		var key = newChildren[_i2i].key;
+		if (key && keyStore[key]) {
+
+		}
 		if (!isSameType(prevChildren[i], newChildren[i])) {
 
 		}
 	}
 
+}
+
+function diffProps(prev, now) {
+	var prevProps = prev.props;
+	var props = now.props;
+	now._hostNode = prev._hostNode;
+	for (var name in props) {
+		if (!props[name] === prevProps[name]) {
+			renderComponentChildren(now, now._hostNode);
+		}
+	}
 }
 
 function genKey(child) {
