@@ -124,7 +124,11 @@ function setDomAttr(dom, props) {
 	for (const key in props) {
 		if (key !== 'children' && key !== 'className' && key !== 'key') {
 			if (key.indexOf('on') !== 0) {
-				dom.setAttribute(key, props[key]);
+				if (dom.nodeName !== 'INPUT' && key !== 'value') {
+					dom.setAttribute(key, props[key]);
+				}else{//input value setAttribute会失败 故直接赋值
+					dom[key] = props[key];
+				}
 			} else {
 				var e = key.substring(2).toLowerCase();
 				dom.addEventListener(e, eventProxy);
@@ -181,17 +185,25 @@ function mayDiff(prevChildren, newChildren, parent) {
 	if (prevChildren.length === newChildren.length) {
 		for (let _i = 0; _i < newChildren.length; _i++) {
 			var child = newChildren[_i];
-			//具备相同Type或key 认为其为改变diff其props
-			if (isSameType(prevChildren[_i], newChildren[_i])) {
-				diffProps(prevChildren[_i], newChildren[_i]);
-			} else {
+			if (typeof child === 'object') {
+				//具备相同Type或key 认为其为改变diff其props
+				if (isSameType(prevChildren[_i], newChildren[_i])) {
+					diffProps(prevChildren[_i], newChildren[_i]);
+				} else {
 
+				}
+			} else {//string
+				if (prevChildren[_i] !== newChildren[_i]) {
+					childNodes[_i].nodeValue = newChildren[_i];
+				}
 			}
+
+
 		}
 	}
 
 	for (let _i2 = 0; _i2 < newChildren.length; _i2++) {
-		var key = newChildren[_i2i].key;
+		var key = newChildren[_i2].key;
 		if (key && keyStore[key]) {
 
 		}
@@ -207,8 +219,9 @@ function diffProps(prev, now) {
 	var props = now.props;
 	now._hostNode = prev._hostNode;
 	for (var name in props) {
-		if (!props[name] === prevProps[name]) {
-			renderComponentChildren(now, now._hostNode);
+		if (!(props[name] === prevProps[name])) {
+			setDomAttr(now._hostNode, props);
+			return;
 		}
 	}
 }
