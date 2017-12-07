@@ -186,11 +186,11 @@ function mayDiff(prevChildren, newChildren, parent) {
 		for (let _i = 0; _i < newChildren.length; _i++) {
 			var child = newChildren[_i];
 			if (typeof child === 'object') {
-				//具备相同Type或key 认为其为改变diff其props
+				//具备相同Type或key diff其props
 				if (isSameType(prevChildren[_i], newChildren[_i])) {
 					diffProps(prevChildren[_i], newChildren[_i]);
 				} else {
-
+					
 				}
 			} else {//string
 				if (prevChildren[_i] !== newChildren[_i]) {
@@ -202,15 +202,15 @@ function mayDiff(prevChildren, newChildren, parent) {
 		}
 	}
 
-	for (let _i2 = 0; _i2 < newChildren.length; _i2++) {
-		var key = newChildren[_i2].key;
-		if (key && keyStore[key]) {
+	// for (let _i2 = 0; _i2 < newChildren.length; _i2++) {
+	// 	var key = newChildren[_i2].key;
+	// 	if (key && keyStore[key]) {
 
-		}
-		if (!isSameType(prevChildren[i], newChildren[i])) {
+	// 	}
+	// 	if (!isSameType(prevChildren[i], newChildren[i])) {
 
-		}
-	}
+	// 	}
+	// }
 
 }
 
