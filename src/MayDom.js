@@ -108,6 +108,8 @@ function buildComponentFromVnode(vnode) {
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		renderedVnode = Ctor.call(vnode, props, context);
 	}
+	//添加一个指针用于删除DOM时释放其component 对象,事件,ref等占用的内存
+	vnode._renderedVnode = renderedVnode;
 	return renderedVnode;
 }
 
@@ -126,7 +128,7 @@ function setDomAttr(dom, props) {
 			if (key.indexOf('on') !== 0) {
 				if (dom.nodeName !== 'INPUT' && key !== 'value') {
 					dom.setAttribute(key, props[key]);
-				}else{//input value setAttribute会失败 故直接赋值
+				} else {//input value setAttribute会失败 故直接赋值
 					dom[key] = props[key];
 				}
 			} else {
@@ -185,21 +187,42 @@ function mayDiff(prevChildren, newChildren, parent) {
 	if (prevChildren.length === newChildren.length) {
 		for (let _i = 0; _i < newChildren.length; _i++) {
 			var child = newChildren[_i];
-			if (typeof child === 'object') {
-				//具备相同Type或key diff其props
-				if (isSameType(prevChildren[_i], newChildren[_i])) {
-					diffProps(prevChildren[_i], newChildren[_i]);
-				} else {
-					
-				}
-			} else {//string
-				if (prevChildren[_i] !== newChildren[_i]) {
-					childNodes[_i].nodeValue = newChildren[_i];
-				}
+			var type = typeof child;
+			var newDom;
+			switch (type) {
+				case 'object':
+					if (isSameType(prevChildren[_i], newChildren[_i])) {
+						diffProps(prevChildren[_i], newChildren[_i]);
+					} else {
+						var _type = typeof child.type;
+						switch (_type) {
+							case 'string':
+								newDom = document.createElement(_type);
+								renderComponentChildren(child, newDom)
+								break;
+							case 'function':
+								var renderedVnode = buildComponentFromVnode(child);
+								newDom = document.createElement(renderedVnode.type);
+								renderComponentChildren(renderedVnode, newDom);
+								break;
+						}
+						disposeVnode(prevChildren[_i]);
+						disposeDom(childNodes[_i]);
+						parent.replaceChild(newDom, childNodes[_i]);
+					}
+					break;
+				case 'string':
+					if (prevChildren[_i] !== newChildren[_i]) {
+						childNodes[_i].nodeValue = newChildren[_i];
+					}
+					break;
+
 			}
 
 
 		}
+	} else {
+
 	}
 
 	// for (let _i2 = 0; _i2 < newChildren.length; _i2++) {
@@ -212,6 +235,23 @@ function mayDiff(prevChildren, newChildren, parent) {
 	// 	}
 	// }
 
+}
+
+function disposeVnode(vnode) {
+	if (vnode._renderedVnode) {
+		if (vnode._renderedVnode.component) {
+			vnode._renderedVnode.component = null;
+		}
+		vnode._renderedVnode = null;
+		vnode = null;
+	}
+}
+function disposeDom(dom) {
+	if (dom._listener) {
+		for (const key in dom._listener) {
+			dom.removeEventListener(key, eventProxy);
+		}
+	}
 }
 
 function diffProps(prev, now) {

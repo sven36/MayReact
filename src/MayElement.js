@@ -9,24 +9,31 @@ export function createElement(type, config, children) {
     var props = {};
     var key = null;
     var ref = null;
-    var len =arguments.length-2;
+    var len = arguments.length - 2;
     if (config) {
         key = config.key ? '' + config.key : null;
         ref = config.ref || null;
-        for(var i in config){
-            if(i!=='key'&&i!='ref'){
-                props[i]=config[i];
+        for (var i in config) {
+            if (i !== 'key' && i != 'ref') {
+                props[i] = config[i];
             }
         }
     }
 
     if (len > 1) {
-        var array = new Array(len);
+        var array = new Array();
         for (var i = 0; i < len; i++) {
-            array[i] = arguments[i+2];
+            var _type = typeof arguments[i + 2];
+            switch (_type) {
+                case 'object':
+                case 'number':
+                case 'string':
+                    array.push(arguments[i + 2]);
+                    break;
+            }
         }
         props.children = array;
-    } else if(len===1){
+    } else if (len === 1) {
         props.children = [];
         props.children[0] = children;
     }
@@ -48,11 +55,11 @@ var Vnode = function (type, key, ref, props) {
     this.key = key;
     this.ref = ref;
     this.props = props;
-    this.$$typeof=1
+    this.$$typeof = 1
 }
 
-export function isValaidElement(object){
-    return typeof object === 'object'&&object!==null&&object.$$typeof===1;
+export function isValaidElement(object) {
+    return typeof object === 'object' && object !== null && object.$$typeof === 1;
 }
 
 /*
