@@ -153,7 +153,7 @@ export function reRender(component) {
 	var props = component.props;
 	var context = component.context;
 	var prevstate = component.state;
-	var prevChildren = component.updater.renderedVnode.props.children;
+	var prevRenderedVnode = component.updater.renderedVnode;
 	var hostNode = component.updater._hostNode;
 	var updateState = {};
 	for (var i = 0; i < component._mergeStateQueue.length; i++) {
@@ -170,78 +170,94 @@ export function reRender(component) {
 	var updatedVnode = component.render(props, context);
 	component.updater.renderedVnode = updatedVnode;
 
-	mayDiff(prevChildren, updatedVnode.props.children, hostNode);
+	mayDiff(prevRenderedVnode, updatedVnode, hostNode);
+
+}
+var mayKeyUid = 0;
+function mayDiff(prevVnode, updatedVnode, parent) {
+	var keyStore = {};
+	var childNodes = parent.childNodes;
+
+	if (!prevVnode._transformedChildren && prevVnode.props.children) {
+		var _tran = transformChildren(prevVnode.props.children, keyStore)
+		prevVnode._transformedChildren = _tran;
+		_tran = null;
+	}
+
+	var _tranNew = transformChildren(updatedVnode.props.children);
+
+	//diff之前 遍历之前的children 与newChildren 如有相同key的只对其props diff
+	//有移动的dom标识
+	var _diffPrevChildren = [];
+
+	for (let _i = 0; _i < newChildren.length; _i++) {
+		var child = newChildren[_i];
+		var type = typeof child;
+		var newDom;
+		switch (type) {
+			case 'object':
+				if (isSameType(prevChildren[_i], newChildren[_i])) {
+					diffProps(prevChildren[_i], newChildren[_i]);
+				} else {
+					var _type = typeof child.type;
+					switch (_type) {
+						case 'string':
+							newDom = document.createElement(_type);
+							renderComponentChildren(child, newDom)
+							break;
+						case 'function':
+							var renderedVnode = buildComponentFromVnode(child);
+							newDom = document.createElement(renderedVnode.type);
+							renderComponentChildren(renderedVnode, newDom);
+							break;
+					}
+					disposeVnode(prevChildren[_i]);
+					disposeDom(childNodes[_i]);
+					parent.replaceChild(newDom, childNodes[_i]);
+				}
+				break;
+			case 'string':
+				if (prevChildren[_i] !== newChildren[_i]) {
+					childNodes[_i].nodeValue = newChildren[_i];
+				}
+				break;
+
+		}
+
+
+	}
 
 }
 
-function mayDiff(prevChildren, newChildren, parent) {
-	var keyStore = {};
-	var childNodes = parent.childNodes;
-	for (var i = 0; i < prevChildren.length; i++) {
-		var _key = prevChildren[i].key;
-		if (_key) {
-			keyStore[_key] = prevChildren[i];
-			prevChildren[i]._prevChildKeyIndex = i;
+function transformChildren(children, keyStore) {
+	var len = children.length;
+	var result = new Array(len);
+	for (var i = 0; i < len; i++) {
+		var c = children[i];
+		var __type = typeof c;
+		switch (__type) {
+			case 'object':
+				//没有key 则自动添加一个key 用于再次diff时比对(第一次diff用不上)
+				var _key = c.key;
+				if (_key) {
+					keyStore && (keyStore[_key] = c);
+				} else {
+					c.key = "__MayKey__" + mayKeyUid++;
+				}
+				result.push(c);
+				break;
+			case 'number':
+			case 'string':
+				//都变成obj 否则dom diff时再if else 运算量更大
+				var tran = {
+					type: '#text',
+					value: c
+				}
+				result.push(tran);
+				break;
 		}
+
 	}
-	//长度未变化
-	if (prevChildren.length === newChildren.length) {
-		for (let _i = 0; _i < newChildren.length; _i++) {
-			var child = newChildren[_i];
-			var type = typeof child;
-			var newDom;
-			switch (type) {
-				case 'object':
-					if (isSameType(prevChildren[_i], newChildren[_i])) {
-						diffProps(prevChildren[_i], newChildren[_i]);
-					} else {
-						var _type = typeof child.type;
-						switch (_type) {
-							case 'string':
-								newDom = document.createElement(_type);
-								renderComponentChildren(child, newDom)
-								break;
-							case 'function':
-								var renderedVnode = buildComponentFromVnode(child);
-								newDom = document.createElement(renderedVnode.type);
-								renderComponentChildren(renderedVnode, newDom);
-								break;
-						}
-						disposeVnode(prevChildren[_i]);
-						disposeDom(childNodes[_i]);
-						parent.replaceChild(newDom, childNodes[_i]);
-					}
-					break;
-				case 'string':
-					if (prevChildren[_i] !== newChildren[_i]) {
-						childNodes[_i].nodeValue = newChildren[_i];
-					}
-					break;
-
-			}
-
-
-		}
-	} else {
-		for (var _i_ = 0; _i_ < newChildren.length; _i_++) {
-			var child = newChildren[_i_];
-			var key = child.key;
-			if (key && keyStore[key]) {
-
-			}
-		}
-	}
-
-	// for (let _i2 = 0; _i2 < newChildren.length; _i2++) {
-	// 	var key = newChildren[_i2].key;
-	// 	if (key && keyStore[key]) {
-
-	// 	}
-	// 	if (!isSameType(prevChildren[i], newChildren[i])) {
-
-	// 	}
-	// }
-
 }
 
 function disposeVnode(vnode) {
