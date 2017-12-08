@@ -128,7 +128,7 @@ function setDomAttr(dom, props) {
 			if (key.indexOf('on') !== 0) {
 				if (dom.nodeName !== 'INPUT' && key !== 'value') {
 					dom.setAttribute(key, props[key]);
-				} else {//input value setAttribute会失败 故直接赋值
+				} else { //input value setAttribute会失败 故直接赋值
 					dom[key] = props[key];
 				}
 			} else {
@@ -181,6 +181,7 @@ function mayDiff(prevChildren, newChildren, parent) {
 		var _key = prevChildren[i].key;
 		if (_key) {
 			keyStore[_key] = prevChildren[i];
+			prevChildren[i]._prevChildKeyIndex = i;
 		}
 	}
 	//长度未变化
@@ -222,7 +223,13 @@ function mayDiff(prevChildren, newChildren, parent) {
 
 		}
 	} else {
+		for (var _i_ = 0; _i_ < newChildren.length; _i_++) {
+			var child = newChildren[_i_];
+			var key = child.key;
+			if (key && keyStore[key]) {
 
+			}
+		}
 	}
 
 	// for (let _i2 = 0; _i2 < newChildren.length; _i2++) {
@@ -246,6 +253,7 @@ function disposeVnode(vnode) {
 		vnode = null;
 	}
 }
+
 function disposeDom(dom) {
 	if (dom._listener) {
 		for (const key in dom._listener) {
