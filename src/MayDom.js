@@ -28,7 +28,7 @@ var renderByMay = function (vnode, container, callback) {
 			renderedVnode = buildComponentFromVnode(vnode);
 			rootDom = document.createElement(renderedVnode.type);
 			renderComponentChildren(renderedVnode, rootDom);
-			renderedVnode.component.updater && (renderedVnode.component.updater._hostNode = rootDom);
+			renderedVnode._component._updater && (renderedVnode._component._updater._hostNode = rootDom);
 		} else if (typeof vnode.type === 'string') {
 			rootDom = document.createElement(vnode.type);
 			renderComponentChildren(vnode, rootDom);
@@ -73,7 +73,7 @@ function renderComponentChildren(component, parent) {
 						var renderedVnode = buildComponentFromVnode(c);
 						cdom = document.createElement(renderedVnode.type);
 						renderComponentChildren(renderedVnode, cdom);
-						renderedVnode.component.updater && (renderedVnode.component.updater._hostNode = cdom);
+						renderedVnode._component._updater && (renderedVnode._component._updater._hostNode = cdom);
 					}
 					parent.appendChild(cdom);
 				case 'undefined':
@@ -82,6 +82,11 @@ function renderComponentChildren(component, parent) {
 		}
 	}
 	if (component.componentDidMount) component.componentDidMount();
+}
+//给可能含有setState方法的Child 添加Key
+export var _internalObj = {
+	mayKeyUid: 0,
+	maybe: false
 }
 
 function buildComponentFromVnode(vnode) {
@@ -95,15 +100,23 @@ function buildComponentFromVnode(vnode) {
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
 		component = new Ctor(props, key, ref, context);
+		if (component.state) {
+			//如果该component 含有初始化的state 则其很有可能绑定setState方法
+			//为了方便diff 对其未设置Key的child 设置一个Key
+			_internalObj.maybe = true;
+		}
 
 		if (component.componentWillMount) component.componentWillMount();
+
 		renderedVnode = component.render(props, context);
+		//只对可能含有setState方法的component设置
+		_internalObj.maybe = false;
 
 		//后加 vnode.type === 'function' 代表其为Component Component中才能setState
 		//setState会触发reRender 故只需对Comonent添加一个updater 保存有助于domDiff的参数
-		component.updater = {};
-		component.updater.renderedVnode = renderedVnode;
-		renderedVnode.component = component;
+		component._updater = {};
+		component._updater.renderedVnode = renderedVnode;
+		renderedVnode._component = component;
 		//
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		renderedVnode = Ctor.call(vnode, props, context);
@@ -153,8 +166,8 @@ export function reRender(component) {
 	var props = component.props;
 	var context = component.context;
 	var prevstate = component.state;
-	var prevRenderedVnode = component.updater.renderedVnode;
-	var hostNode = component.updater._hostNode;
+	var prevRenderedVnode = component._updater.renderedVnode;
+	var hostNode = component._updater._hostNode;
 	var updateState = {};
 	for (var i = 0; i < component._mergeStateQueue.length; i++) {
 		updateState = extend(updateState, component._mergeStateQueue[i]);
@@ -168,12 +181,12 @@ export function reRender(component) {
 	}
 
 	var updatedVnode = component.render(props, context);
-	component.updater.renderedVnode = updatedVnode;
+	component._updater.renderedVnode = updatedVnode;
 
 	mayDiff(prevRenderedVnode, updatedVnode, hostNode);
 
 }
-var mayKeyUid = 0;
+
 function mayDiff(prevVnode, updatedVnode, parent) {
 	var keyStore = {};
 	var childNodes = parent.childNodes;
@@ -185,6 +198,18 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 	}
 
 	var _tranNew = transformChildren(updatedVnode.props.children);
+
+	for (var i = 0; i < _tranNew.length; i++) {
+		var c = _tranNew[i];
+		var key = c.key;
+		if (keyStore[key]) {
+			c.prevProps = keyStore[key].props;
+			if (keyStore[key]._hostNode) {
+				c._hostNode = _hostNode;
+			}
+		}
+
+	}
 
 	//diff之前 遍历之前的children 与newChildren 如有相同key的只对其props diff
 	//有移动的dom标识
@@ -228,7 +253,10 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 	}
 
 }
-
+//https://segmentfault.com/a/1190000010336457  司徒正美大大写的分析
+//hydrate是最早出现于inferno(另一个著名的react-like框架)，并相邻的简单数据类型合并成一个字符串。
+//因为在react的虚拟DOM体系中，字符串相当于一个文本节点。减少children中的个数，
+//就相当减少实际生成的文本节点的数量，也减少了以后diff的数量，能有效提高性能。
 function transformChildren(children, keyStore) {
 	var len = children.length;
 	var result = new Array(len);
@@ -237,14 +265,7 @@ function transformChildren(children, keyStore) {
 		var __type = typeof c;
 		switch (__type) {
 			case 'object':
-				//没有key 则自动添加一个key 用于再次diff时比对(第一次diff用不上)
-				var _key = c.key;
-				if (_key) {
-					keyStore && (keyStore[_key] = c);
-				} else {
-					c.key = "__MayKey__" + mayKeyUid++;
-				}
-				result.push(c);
+				result[i] = c;
 				break;
 			case 'number':
 			case 'string':
@@ -253,11 +274,12 @@ function transformChildren(children, keyStore) {
 					type: '#text',
 					value: c
 				}
-				result.push(tran);
+				result[i] = tran;
 				break;
 		}
 
 	}
+	return result;
 }
 
 function disposeVnode(vnode) {

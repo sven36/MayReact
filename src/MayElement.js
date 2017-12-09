@@ -1,3 +1,7 @@
+import {
+    _internalObj
+} from "./MayDom";
+
 /**
  * 
  * @param {*} type dom类型或func
@@ -19,6 +23,12 @@ export function createElement(type, config, children) {
             }
         }
     }
+    if (!key) {
+        //如果没有Key则添加一个Key方便diff
+        if (_internalObj.maybe) {
+            key = '__MayDiff__' + _internalObj.mayKeyUid++;
+        }
+    }
 
     if (len > 1) {
         var array = new Array();
@@ -27,8 +37,10 @@ export function createElement(type, config, children) {
             switch (_type) {
                 case 'object':
                 case 'number':
-                case 'string':
                     array.push(arguments[i + 2]);
+                    break;
+                case 'string':
+                    arguments[i + 2] && array.push(arguments[i + 2]);
                     break;
             }
         }
