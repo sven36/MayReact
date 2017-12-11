@@ -24,16 +24,7 @@ export function createElement(type, config, children) {
     if (len > 1) {
         var array = new Array();
         for (var i = 0; i < len; i++) {
-            var _type = typeof arguments[i + 2];
-            switch (_type) {
-                case 'object':
-                case 'number':
-                    array.push(arguments[i + 2]);
-                    break;
-                case 'string':
-                    arguments[i + 2] && array.push(arguments[i + 2]);
-                    break;
-            }
+            array.push(arguments[i + 2]);
         }
         props.children = array;
     } else if (len === 1) {

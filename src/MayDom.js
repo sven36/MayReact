@@ -174,33 +174,60 @@ export function reRender(component) {
 
 function mayDiff(prevVnode, updatedVnode, parent) {
 	var keyStore = {};
-	var childNodes = parent.childNodes;
+	var childList = [].slice.call(parent.childNodes);
 	var prevChildren;
 	if (!prevVnode._vChildren && prevVnode.props.children) {
-		prevChildren = transformChildren(prevVnode.props.children, keyStore)
+		prevChildren = transformChildren(prevVnode.props.children, childList)
 	} else {
 		prevChildren = prevVnode._vChildren;
 	}
-	var newChildren = transformChildren(updatedVnode.props.children);
-	updatedVnode._vChildren = newChildren;
+	// var newChildren = transformChildren(updatedVnode.props.children);
+	// updatedVnode._vChildren = newChildren;
+	var newRenderedChild=updatedVnode.props.children;
+	//diff之前 遍历prevchildren 与newChildren 如有相同key的只对其props diff
+	var _mountChildren = [];
+	var _unMountChildren = [];
 
-	for (var i = 0; i < _tranNew.length; i++) {
-		var c = _tranNew[i];
-		var key = c.key;
-		if (keyStore[key]) {
-			c.prevProps = keyStore[key].props;
-			if (keyStore[key]._hostNode) {
-				c._hostNode = _hostNode;
-			}
+	for (var i = 0; i < newRenderedChild.length; i++) {
+		var c = newRenderedChild[i];
+		var t = typeof c;
+		switch (t) {
+			case 'object':
+				var k = genKey(c);
+				if(prevChildren[k]){
+
+				}
+				if (isSameType(prevChildren[_i], newChildren[_i])) {
+					diffProps(prevChildren[_i], newChildren[_i]);
+				} else {
+					var _type = typeof child.type;
+					switch (_type) {
+						case 'string':
+							newDom = document.createElement(_type);
+							renderComponentChildren(child, newDom)
+							break;
+						case 'function':
+							var renderedVnode = buildComponentFromVnode(child);
+							newDom = document.createElement(renderedVnode.type);
+							renderComponentChildren(renderedVnode, newDom);
+							break;
+					}
+					disposeVnode(prevChildren[_i]);
+					disposeDom(childNodes[_i]);
+					parent.replaceChild(newDom, childNodes[_i]);
+				}
+				break;
+			case 'number':
+			case 'string':
+				if (prevChildren[_i] !== newChildren[_i]) {
+					childNodes[_i].nodeValue = newChildren[_i];
+				}
+				break;
+
 		}
-
 	}
 
-	//diff之前 遍历之前的children 与newChildren 如有相同key的只对其props diff
-	//有移动的dom标识
-	var _diffPrevChildren = [];
-
-	for (let _i = 0; _i < newChildren.length; _i++) {
+	for (var _i = 0; _i < newChildren.length; _i++) {
 		var child = newChildren[_i];
 		var type = typeof child;
 		var newDom;
@@ -245,8 +272,12 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 
 //render过程中有Key的 是最有可能变动的，无Key的很可能不会变（绝大部分情况）
 //把children带Key的放一起  不带Key的放一起（因为他们很可能不变化，顺序也不变减少diff寻找）
-function transformChildren(children) {
+function transformChildren(children, childList) {
 	var len = children.length;
+	var listLen = childList.length;
+	//children为false undefinde,null等不会render 
+	//要找到text 对应的TextNode i-diffLen即可;
+	var diffLen = len - listLen;
 	var result = {};
 	for (var i = 0; i < len; i++) {
 		var c = children[i];
@@ -254,10 +285,10 @@ function transformChildren(children) {
 		switch (__type) {
 			case 'object':
 				var _key = genKey(c);
-				if(!result[_key]){
-					result[_key]=[c];
-				}else{
-					result.push(c);
+				if (!result[_key]) {
+					result[_key] = [c];
+				} else {
+					result[_key].push(c);
 				}
 				break;
 			case 'number':
@@ -270,14 +301,15 @@ function transformChildren(children) {
 				if ((i + 1 < len) && (typeof children[i + 1] === 'string')) {
 					tran.value += children[i + 1];
 				}
-				var _k='#text';
-				if(!result[_k]){
-					result[_key]=[tran];
-				}else{
-					result.push(tran);
+				if (childList[i - diffLen]) {
+					tran._hostNode = childList[i - diffLen];
 				}
-				// var _k = '_' + i + '#text';
-				// result[_k] = tran;
+				var _k = '#text';
+				if (!result[_k]) {
+					result[_k] = [tran];
+				} else {
+					result[_k].push(tran);
+				}
 				i++;
 				break;
 		}
