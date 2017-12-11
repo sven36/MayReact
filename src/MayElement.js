@@ -1,6 +1,3 @@
-import {
-    _internalObj
-} from "./MayDom";
 
 /**
  * 
@@ -21,12 +18,6 @@ export function createElement(type, config, children) {
             if (i !== 'key' && i != 'ref') {
                 props[i] = config[i];
             }
-        }
-    }
-    if (!key) {
-        //如果没有Key则添加一个Key方便diff
-        if (_internalObj.maybe) {
-            key = '__MayDiff__' + _internalObj.mayKeyUid++;
         }
     }
 

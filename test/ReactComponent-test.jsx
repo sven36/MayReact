@@ -9,14 +9,12 @@
 //   var React = {
 //     createElement: createElement
 //   }
-// import { Component } from "../dist/ReactANU";
-// import React from "../dist/ReactANU";
 
-// import { Component } from "../dist/react";
-import React from "../dist/react";
-// window.React = React;
+import React from "../dist/ReactANU";
 
-import ReactDOM from "../dist/react-dom";
+
+// import React from "../dist/react";
+// import ReactDOM from "../dist/react-dom";
 
 //   import {Component} from "../dist/preact";
 //   import React from "../dist/preact";
@@ -78,27 +76,38 @@ describe("ReactComponent", function () {
                 this.refs.inputRef.focus()
             }
             render() {
-                var item;
-                if(this.state.val === 'I wonder'){
-                    item=<Child key="1" val="2" />;
-                }
+                var item = [];
+                if (this.state.val === 'I wonder') {
                 return (
                     <div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
-                        { item }
+                        <Child key="Childt" val="4" />
                         <input onChange={this.Change} type="text" value={this.state.val} />
                         666&nbsp; {this.state.val}
-                        {this.state.val === 'I wonder' ? <Child key="1" val="2" /> : <Child key="3" val="4" />}
+                        {this.state.val === 'I wonder' ? <Child key="1" val="2" /> : <Child key="Childt" val="4" />}
                         <Child key="0" val={this.state.val} />
+                        <input  type="radio" value={this.state.val} />
+                        666&nbsp; {this.state.val}
                     </div>
-                );
-            }
+            );
+        }else{
+            return(
+                <div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
+                        <input  type="radio" value={this.state.val} />
+                <input onChange={this.Change} type="text" value={this.state.val} />
+                666&nbsp; {this.state.val}
+                {this.state.val === 'I wonder' ? <Child key="1" val="2" /> : <Child key="Childt" val="4" />}
+                <Child key="0" val={this.state.val} />
+            </div>
+            )
+        }
+    }
         }
         //this._updateDOMChildren
 
         // React.render(<Parent />, container);
         window.ReactDOM.render(<Parent />, container);
         document.body.appendChild(container);
-        expect(console.error.calls.count()).toBe(0);
+        // expect(console.error.calls.count()).toBe(0);
     });
     //  it("should warn when children are mutated during render", () => {
     //     function Wrapper(props) {

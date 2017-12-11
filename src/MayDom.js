@@ -28,7 +28,7 @@ var renderByMay = function (vnode, container, callback) {
 			renderedVnode = buildComponentFromVnode(vnode);
 			rootDom = document.createElement(renderedVnode.type);
 			renderComponentChildren(renderedVnode, rootDom);
-			renderedVnode._component._updater && (renderedVnode._component._updater._hostNode = rootDom);
+			renderedVnode._hostNode = rootDom;
 		} else if (typeof vnode.type === 'string') {
 			rootDom = document.createElement(vnode.type);
 			renderComponentChildren(vnode, rootDom);
@@ -73,7 +73,7 @@ function renderComponentChildren(component, parent) {
 						var renderedVnode = buildComponentFromVnode(c);
 						cdom = document.createElement(renderedVnode.type);
 						renderComponentChildren(renderedVnode, cdom);
-						renderedVnode._component._updater && (renderedVnode._component._updater._hostNode = cdom);
+						c._hostNode = cdom;
 					}
 					parent.appendChild(cdom);
 				case 'undefined':
@@ -82,11 +82,6 @@ function renderComponentChildren(component, parent) {
 		}
 	}
 	if (component.componentDidMount) component.componentDidMount();
-}
-//给可能含有setState方法的Child 添加Key
-export var _internalObj = {
-	mayKeyUid: 0,
-	maybe: false
 }
 
 function buildComponentFromVnode(vnode) {
@@ -100,23 +95,13 @@ function buildComponentFromVnode(vnode) {
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
 		component = new Ctor(props, key, ref, context);
-		if (component.state) {
-			//如果该component 含有初始化的state 则其很有可能绑定setState方法
-			//为了方便diff 对其未设置Key的child 设置一个Key
-			_internalObj.maybe = true;
-		}
-
 		if (component.componentWillMount) component.componentWillMount();
 
 		renderedVnode = component.render(props, context);
-		//只对可能含有setState方法的component设置
-		_internalObj.maybe = false;
-
-		//后加 vnode.type === 'function' 代表其为Component Component中才能setState
-		//setState会触发reRender 故只需对Comonent添加一个updater 保存有助于domDiff的参数
-		component._updater = {};
-		component._updater.renderedVnode = renderedVnode;
-		renderedVnode._component = component;
+		// vnode.type === 'function' 代表其为Component Component中才能setState
+		//setState会触发reRender 故保存有助于domDiff的参数
+		component._renderedVnode = renderedVnode;
+		// renderedVnode._component = component;
 		//
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		renderedVnode = Ctor.call(vnode, props, context);
@@ -166,8 +151,8 @@ export function reRender(component) {
 	var props = component.props;
 	var context = component.context;
 	var prevstate = component.state;
-	var prevRenderedVnode = component._updater.renderedVnode;
-	var hostNode = component._updater._hostNode;
+	var prevRenderedVnode = component._renderedVnode;
+	var hostNode = prevRenderedVnode._hostNode;
 	var updateState = {};
 	for (var i = 0; i < component._mergeStateQueue.length; i++) {
 		updateState = extend(updateState, component._mergeStateQueue[i]);
@@ -181,7 +166,7 @@ export function reRender(component) {
 	}
 
 	var updatedVnode = component.render(props, context);
-	component._updater.renderedVnode = updatedVnode;
+	component._renderedVnode = updatedVnode;
 
 	mayDiff(prevRenderedVnode, updatedVnode, hostNode);
 
@@ -190,14 +175,14 @@ export function reRender(component) {
 function mayDiff(prevVnode, updatedVnode, parent) {
 	var keyStore = {};
 	var childNodes = parent.childNodes;
-
-	if (!prevVnode._transformedChildren && prevVnode.props.children) {
-		var _tran = transformChildren(prevVnode.props.children, keyStore)
-		prevVnode._transformedChildren = _tran;
-		_tran = null;
+	var prevChildren;
+	if (!prevVnode._vChildren && prevVnode.props.children) {
+		prevChildren = transformChildren(prevVnode.props.children, keyStore)
+	} else {
+		prevChildren = prevVnode._vChildren;
 	}
-
-	var _tranNew = transformChildren(updatedVnode.props.children);
+	var newChildren = transformChildren(updatedVnode.props.children);
+	updatedVnode._vChildren = newChildren;
 
 	for (var i = 0; i < _tranNew.length; i++) {
 		var c = _tranNew[i];
@@ -253,28 +238,47 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 	}
 
 }
-//https://segmentfault.com/a/1190000010336457  司徒正美大大写的分析
+//https://segmentfault.com/a/1190000010336457  司徒正美先生写的分析
 //hydrate是最早出现于inferno(另一个著名的react-like框架)，并相邻的简单数据类型合并成一个字符串。
 //因为在react的虚拟DOM体系中，字符串相当于一个文本节点。减少children中的个数，
 //就相当减少实际生成的文本节点的数量，也减少了以后diff的数量，能有效提高性能。
-function transformChildren(children, keyStore) {
+
+//render过程中有Key的 是最有可能变动的，无Key的很可能不会变（绝大部分情况）
+//把children带Key的放一起  不带Key的放一起（因为他们很可能不变化，顺序也不变减少diff寻找）
+function transformChildren(children) {
 	var len = children.length;
-	var result = new Array(len);
+	var result = {};
 	for (var i = 0; i < len; i++) {
 		var c = children[i];
 		var __type = typeof c;
 		switch (__type) {
 			case 'object':
-				result[i] = c;
+				var _key = genKey(c);
+				if(!result[_key]){
+					result[_key]=[c];
+				}else{
+					result.push(c);
+				}
 				break;
 			case 'number':
 			case 'string':
-				//都变成obj 否则dom diff时再if else 运算量更大
+				//相邻的简单数据类型合并成一个字符串
 				var tran = {
 					type: '#text',
 					value: c
 				}
-				result[i] = tran;
+				if ((i + 1 < len) && (typeof children[i + 1] === 'string')) {
+					tran.value += children[i + 1];
+				}
+				var _k='#text';
+				if(!result[_k]){
+					result[_key]=[tran];
+				}else{
+					result.push(tran);
+				}
+				// var _k = '_' + i + '#text';
+				// result[_k] = tran;
+				i++;
 				break;
 		}
 
@@ -313,7 +317,7 @@ function diffProps(prev, now) {
 }
 
 function genKey(child) {
-	return child.key || child.type;
+	return !child.key ? (child.type.name || child.type) : ('_$' + child.key);
 }
 
 function isSameType(prev, now) {
