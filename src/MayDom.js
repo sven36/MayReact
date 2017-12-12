@@ -188,7 +188,6 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 	var _mountChildren = [];
 	var _unMountChildren = [];
 	var k, prevK, _prevK, _tran;
-	//记录子树的长度 标识新增dom的Index
 	for (var i = 0; i < newRenderedChild.length; i++) {
 		var c = newRenderedChild[i];
 		var t = typeof c;
@@ -217,7 +216,9 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 				var vnode = prevK[_i];
 				if (!vnode._reused) {
 					c._hostNode = vnode._hostNode;
+					c._prevVnode = vnode;
 					vnode._reused = true;
+					c._reused = true;
 					break;
 				}
 			}
@@ -236,6 +237,10 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 }
 
 function flushMounts(newChildren, parent) {
+	var childList = [].slice.call(parent.childNodes);
+	var len = childList.length;
+	//如果添加节点之后 children len 会增长 insertCount+1 让其插入位置正确
+	var insertCount = 0;
 	for (var _i = 0; _i < newChildren.length; _i++) {
 		var child = newChildren[_i];
 		var type = typeof child.type;
@@ -243,35 +248,43 @@ function flushMounts(newChildren, parent) {
 		switch (type) {
 			case 'function':
 				//如果能复用之前节点
-				if (child._hostNode) {
-
+				if (child._reused) {
+					diffProps()
 				} else {
-
-				}
-
-				if (isSameType(prevChildren[_i], newChildren[_i])) {
-					diffProps(prevChildren[_i], newChildren[_i]);
-				} else {
-					var _type = typeof child.type;
-					switch (_type) {
-						case 'string':
-							newDom = document.createElement(_type);
-							renderComponentChildren(child, newDom)
-							break;
-						case 'function':
-							var renderedVnode = buildComponentFromVnode(child);
-							newDom = document.createElement(renderedVnode.type);
-							renderComponentChildren(renderedVnode, newDom);
-							break;
+					var renderedVnode = buildComponentFromVnode(child);
+					newDom = document.createElement(renderedVnode.type);
+					renderComponentChildren(renderedVnode, newDom);
+					if (_i < len) {
+						parent.insertBefore(newDom, childList[_i + insertCount]);
+						insertCount++;
+					} else {
+						parent.appendChild(newDom);
 					}
-					disposeVnode(prevChildren[_i]);
-					disposeDom(childNodes[_i]);
-					parent.replaceChild(newDom, childNodes[_i]);
 				}
+
+				// if (isSameType(prevChildren[_i], newChildren[_i])) {
+				// 	diffProps(prevChildren[_i], newChildren[_i]);
+				// } else {
+				// 	var _type = typeof child.type;
+				// 	switch (_type) {
+				// 		case 'string':
+				// 			newDom = document.createElement(_type);
+				// 			renderComponentChildren(child, newDom)
+				// 			break;
+				// 	}
+				// 	disposeVnode(prevChildren[_i]);
+				// 	disposeDom(childNodes[_i]);
+				// 	parent.replaceChild(newDom, childNodes[_i]);
+				// }
 				break;
 			case 'string':
-				if (prevChildren[_i] !== newChildren[_i]) {
+				if (child.type !== '#text') {
+					if(child._reused){
+						newDom=diffProps(child._prevVnode,child);
+					}
+				} else {
 					childNodes[_i].nodeValue = newChildren[_i];
+					
 				}
 				break;
 
@@ -328,6 +341,8 @@ function transformChildren(children, childList) {
 				if ((i + 1 < len) && (typeof children[i + 1] === 'string')) {
 					tran.value += children[i + 1];
 					i++;
+					//删除合并的节点
+					tran._hostNode.parentNode.removeChild(childList[i - diffLen]);
 				}
 				var _k = '#text';
 				if (!result[_k]) {
@@ -337,7 +352,6 @@ function transformChildren(children, childList) {
 				}
 				break;
 		}
-
 	}
 	return result;
 }
@@ -367,7 +381,6 @@ function disposeDom(dom) {
 function diffProps(prev, now) {
 	var prevProps = prev.props;
 	var props = now.props;
-	now._hostNode = prev._hostNode;
 	for (var name in props) {
 		if (!(props[name] === prevProps[name])) {
 			setDomAttr(now._hostNode, props);
