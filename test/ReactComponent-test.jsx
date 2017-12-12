@@ -85,6 +85,7 @@ describe("ReactComponent", function () {
                         666&nbsp; {this.state.val}
                         {this.state.val === 'I wonder' ? <Child key="1" val="2" /> : <Child key="Childt" val="4" />}
                         <Child key="0" val={this.state.val} />
+                        <Child key="0" val={this.state.val} />
                         <input  type="radio" value={this.state.val} />
                         666&nbsp; {this.state.val}
                     </div>

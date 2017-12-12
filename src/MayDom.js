@@ -183,56 +183,72 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 	}
 	// var newChildren = transformChildren(updatedVnode.props.children);
 	// updatedVnode._vChildren = newChildren;
-	var newRenderedChild=updatedVnode.props.children;
+	var newRenderedChild = updatedVnode.props.children;
 	//diff之前 遍历prevchildren 与newChildren 如有相同key的只对其props diff
 	var _mountChildren = [];
 	var _unMountChildren = [];
-
+	var k, prevK, _prevK, _tran;
+	//记录子树的长度 标识新增dom的Index
 	for (var i = 0; i < newRenderedChild.length; i++) {
 		var c = newRenderedChild[i];
 		var t = typeof c;
 		switch (t) {
 			case 'object':
-				var k = genKey(c);
-				if(prevChildren[k]){
-
-				}
-				if (isSameType(prevChildren[_i], newChildren[_i])) {
-					diffProps(prevChildren[_i], newChildren[_i]);
-				} else {
-					var _type = typeof child.type;
-					switch (_type) {
-						case 'string':
-							newDom = document.createElement(_type);
-							renderComponentChildren(child, newDom)
-							break;
-						case 'function':
-							var renderedVnode = buildComponentFromVnode(child);
-							newDom = document.createElement(renderedVnode.type);
-							renderComponentChildren(renderedVnode, newDom);
-							break;
-					}
-					disposeVnode(prevChildren[_i]);
-					disposeDom(childNodes[_i]);
-					parent.replaceChild(newDom, childNodes[_i]);
-				}
+				k = genKey(c);
 				break;
 			case 'number':
 			case 'string':
-				if (prevChildren[_i] !== newChildren[_i]) {
-					childNodes[_i].nodeValue = newChildren[_i];
+				k = "#text";
+				_tran = {
+					type: '#text',
+					value: c
+				}
+				c = _tran;
+				//相邻简单数据类型合并
+				if ((i + 1 < newRenderedChild.length) && (typeof newRenderedChild[i + 1] === 'string')) {
+					c.value += newRenderedChild[i + 1];
+					i++;
 				}
 				break;
-
+		}
+		prevK = prevChildren[k];
+		if (prevK && prevK.length > 0) { //试试=0 else
+			for (var _i = 0; _i < prevK.length; _i++) {
+				var vnode = prevK[_i];
+				if (!vnode._reused) {
+					c._hostNode = vnode._hostNode;
+					vnode._reused = true;
+					break;
+				}
+			}
+		}
+		_mountChildren.push(c);
+	}
+	for (var name in prevChildren) {
+		var _c = prevChildren[name];
+		for (let j = 0; j < _c.length; j++) {
+			if (!_c[j]._reused) _unMountChildren.push(_c[j]);
 		}
 	}
+	flushUnMounts(_unMountChildren);
+	flushMounts(_mountChildren, parent);
 
+}
+
+function flushMounts(newChildren, parent) {
 	for (var _i = 0; _i < newChildren.length; _i++) {
 		var child = newChildren[_i];
-		var type = typeof child;
+		var type = typeof child.type;
 		var newDom;
 		switch (type) {
-			case 'object':
+			case 'function':
+				//如果能复用之前节点
+				if (child._hostNode) {
+
+				} else {
+
+				}
+
 				if (isSameType(prevChildren[_i], newChildren[_i])) {
 					diffProps(prevChildren[_i], newChildren[_i]);
 				} else {
@@ -263,8 +279,16 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 
 
 	}
-
 }
+
+function flushUnMounts(oldChildren) {
+	for (var i = 0; i < oldChildren.length; i++) {
+		var c = oldChildren[i];
+		disposeVnode(c);
+		c._hostNode && disposeDom(c._hostNode);
+	}
+}
+
 //https://segmentfault.com/a/1190000010336457  司徒正美先生写的分析
 //hydrate是最早出现于inferno(另一个著名的react-like框架)，并相邻的简单数据类型合并成一个字符串。
 //因为在react的虚拟DOM体系中，字符串相当于一个文本节点。减少children中的个数，
@@ -298,11 +322,12 @@ function transformChildren(children, childList) {
 					type: '#text',
 					value: c
 				}
-				if ((i + 1 < len) && (typeof children[i + 1] === 'string')) {
-					tran.value += children[i + 1];
-				}
 				if (childList[i - diffLen]) {
 					tran._hostNode = childList[i - diffLen];
+				}
+				if ((i + 1 < len) && (typeof children[i + 1] === 'string')) {
+					tran.value += children[i + 1];
+					i++;
 				}
 				var _k = '#text';
 				if (!result[_k]) {
@@ -310,7 +335,6 @@ function transformChildren(children, childList) {
 				} else {
 					result[_k].push(tran);
 				}
-				i++;
 				break;
 		}
 
@@ -333,6 +357,10 @@ function disposeDom(dom) {
 		for (const key in dom._listener) {
 			dom.removeEventListener(key, eventProxy);
 		}
+	}
+	if (dom.parentNode) {
+		dom.parentNode.removeChild(dom);
+		dom = null;
 	}
 }
 
