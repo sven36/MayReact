@@ -279,12 +279,14 @@ function flushMounts(newChildren, parent) {
 				break;
 			case 'string':
 				if (child.type !== '#text') {
-					if(child._reused){
-						newDom=diffProps(child._prevVnode,child);
+					if (child._reused) {
+						// newDom = parent.removeChild(child._hostNode);
+						diffProps(child._prevVnode, child);
+						
 					}
 				} else {
 					childNodes[_i].nodeValue = newChildren[_i];
-					
+
 				}
 				break;
 
