@@ -247,16 +247,28 @@ function flushMounts(newChildren, parent) {
 		var newDom;
 		switch (type) {
 			case 'function':
+				var renderedVnode = buildComponentFromVnode(child);
 				//如果能复用之前节点
 				if (child._reused) {
-					diffProps()
+					var node = parent.childNodes[_i];
+					renderedVnode._hostNode = child._hostNode;
+					diffProps(child._prevVnode._renderedVnode, renderedVnode);
+					if (node) {
+						if (node !== child._hostNode) {
+							newDom = parent.removeChild(child._hostNode);
+							parent.insertBefore(newDom, parent.childNodes[_i])
+						}
+					} else {
+						newDom = child._hostNode;
+						parent.appendChild(newDom);
+					}
 				} else {
-					var renderedVnode = buildComponentFromVnode(child);
 					newDom = document.createElement(renderedVnode.type);
 					renderComponentChildren(renderedVnode, newDom);
-					if (_i < len) {
-						parent.insertBefore(newDom, childList[_i + insertCount]);
-						insertCount++;
+					var node = parent.childNodes[_i];
+					if (node) {
+						parent.insertBefore(newDom, node);
+						// insertCount++;
 					} else {
 						parent.appendChild(newDom);
 					}
@@ -280,13 +292,22 @@ function flushMounts(newChildren, parent) {
 			case 'string':
 				if (child.type !== '#text') {
 					if (child._reused) {
-						// newDom = parent.removeChild(child._hostNode);
+						var node = parent.childNodes[_i];
+						if (node && node.nodeName.toLowerCase() !== child.type) {
+							newDom = parent.removeChild(child._hostNode);
+							parent.insertBefore(newDom, parent.childNodes[_i])
+						}
 						diffProps(child._prevVnode, child);
-						
 					}
 				} else {
-					childNodes[_i].nodeValue = newChildren[_i];
-
+					if (child._reused) {
+						var node = parent.childNodes[_i];
+						if (node && node.nodeName.toLowerCase() !== child.type) {
+							newDom = parent.removeChild(child._hostNode);
+							parent.insertBefore(newDom, parent.childNodes[_i])
+						}
+						child._hostNode.nodeValue = child.value;
+					}
 				}
 				break;
 
@@ -384,11 +405,17 @@ function diffProps(prev, now) {
 	var prevProps = prev.props;
 	var props = now.props;
 	for (var name in props) {
-		if (!(props[name] === prevProps[name])) {
+		if (name !== 'children' && !(props[name] === prevProps[name])) {
 			setDomAttr(now._hostNode, props);
 			return;
 		}
 	}
+	if (props['children']) {
+		diffChildren(prevProps['children'], props['children']);
+	}
+}
+function diffChildren(prevChildren, newChildren) {
+
 }
 
 function genKey(child) {
