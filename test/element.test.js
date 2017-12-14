@@ -73,7 +73,10 @@ describe('may.js', () => {
 		}
 		Change=()=>{
 			this.setState({val:'I see'});
-		}
+    }
+    Click(){
+      
+    }
 		onFocus(){
 			this.refs.inputRef.focus()
 		   }

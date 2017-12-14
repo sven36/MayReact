@@ -28,6 +28,8 @@ var renderByMay = function (vnode, container, callback) {
 			renderedVnode = buildComponentFromVnode(vnode);
 			rootDom = document.createElement(renderedVnode.type);
 			renderComponentChildren(renderedVnode, rootDom);
+			//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
+			renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
 			renderedVnode._hostNode = rootDom;
 		} else if (typeof vnode.type === 'string') {
 			rootDom = document.createElement(vnode.type);
@@ -73,6 +75,7 @@ function renderComponentChildren(component, parent) {
 						var renderedVnode = buildComponentFromVnode(c);
 						cdom = document.createElement(renderedVnode.type);
 						renderComponentChildren(renderedVnode, cdom);
+						renderedVnode._vChildren = transformChildren(renderedVnode.props.children, cdom);
 						c._hostNode = cdom;
 					}
 					parent.appendChild(cdom);
@@ -101,7 +104,6 @@ function buildComponentFromVnode(vnode) {
 		// vnode.type === 'function' 代表其为Component Component中才能setState
 		//setState会触发reRender 故保存有助于domDiff的参数
 		component._renderedVnode = renderedVnode;
-		// renderedVnode._component = component;
 		//
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		renderedVnode = Ctor.call(vnode, props, context);
@@ -265,6 +267,7 @@ function flushMounts(newChildren, parent) {
 				} else {
 					newDom = document.createElement(renderedVnode.type);
 					renderComponentChildren(renderedVnode, newDom);
+					renderedVnode._vChildren = transformChildren(renderedVnode.props.children, newDom);
 					var node = parent.childNodes[_i];
 					if (node) {
 						parent.insertBefore(newDom, node);
@@ -332,13 +335,12 @@ function flushUnMounts(oldChildren) {
 
 //render过程中有Key的 是最有可能变动的，无Key的很可能不会变（绝大部分情况）
 //把children带Key的放一起  不带Key的放一起（因为他们很可能不变化，顺序也不变减少diff寻找）
-function transformChildren(children, childList) {
+function transformChildren(children, parent) {
 	var len = children.length;
-	var listLen = childList.length;
-	//children为false undefinde,null等不会render 
-	//要找到text 对应的TextNode i-diffLen即可;
-	var diffLen = len - listLen;
+	var childList = [].slice.call(parent.childNodes);
 	var result = {};
+	//如有undefined null 未render;
+	var noCount = 0;
 	for (var i = 0; i < len; i++) {
 		var c = children[i];
 		var __type = typeof c;
@@ -358,21 +360,24 @@ function transformChildren(children, childList) {
 					type: '#text',
 					value: c
 				}
-				if (childList[i - diffLen]) {
-					tran._hostNode = childList[i - diffLen];
+				if (childList[i - noCount]) {
+					tran._hostNode = childList[i - noCount];
 				}
-				if ((i + 1 < len) && (typeof children[i + 1] === 'string')) {
-					tran.value += children[i + 1];
-					i++;
-					//删除合并的节点
-					tran._hostNode.parentNode.removeChild(childList[i - diffLen]);
-				}
+				// if ((i + 1 < len) && (typeof children[i + 1 - noCount] === 'string')) {
+				// 	tran.value += children[i + 1 - noCount];
+				// 	i++;
+				// 	//删除合并的节点
+				// 	// parent.removeChild(childList[i - noCount]);
+				// }
 				var _k = '#text';
 				if (!result[_k]) {
 					result[_k] = [tran];
 				} else {
 					result[_k].push(tran);
 				}
+				break;
+			default:
+				noCount++;
 				break;
 		}
 	}
