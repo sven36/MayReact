@@ -85,10 +85,8 @@ describe('may.js', () => {
 				<div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
 					{this.state.val === 'I wonder' ? '':<Child key="1" val="2" />}
 					<input onChange={this.Change} type="text" value={this.state.val} />
-					666&nbsp; {this.state.val}
 					{this.state.val !== 'I wonder' ? <Child key="1" val="2" /> : <Child key="3" val="4" />}
 					<Child key="0" val={this.state.val} />
-					666&nbsp; {this.state.val}
 				</div>
 			);
 		}

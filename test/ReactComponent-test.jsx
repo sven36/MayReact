@@ -77,35 +77,35 @@ describe("ReactComponent", function () {
             }
             render() {
                 var item = [];
-                if (this.state.val === 'I wonder') {
-                return (
-                    <div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
-                        <Child key="Childt" val="4" />
-                        <input onChange={this.Change} type="text" value={this.state.val} />
-                        666&nbsp; {this.state.val}
-                        {this.state.val === 'I wonder' ? <Child key="1" val="2" /> : <Child key="Childt" val="4" />}
-                        <Child key="0" val={this.state.val} />
-                        <Child key="0" val={this.state.val} />
-                        <input  type="radio" value={this.state.val} />
-                        666&nbsp; {this.state.val}
-                    </div>
-            );
-        }else{
+        //         if (this.state.val === 'I wonder') {
+        //         return (
+        //             <div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
+        //                 <Child key="Childt" val="4" />
+        //                 <input onChange={this.Change} type="text" value={this.state.val} />
+        //                 666&nbsp; {this.state.val}
+        //                 {this.state.val === 'I wonder' ? <Child key="1" val="2" /> : <Child key="Childt" val="4" />}
+        //                 <Child key="0" val={this.state.val} />
+        //                 <Child key="0" val={this.state.val} />
+        //                 <input  type="radio" value={this.state.val} />
+        //                 666&nbsp; {this.state.val}
+        //             </div>
+        //     );
+        // }else{
             return(
-                <div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
-                        <input  type="radio" value={this.state.val} />
-                <input onChange={this.Change} type="text" value={this.state.val} />
-                666&nbsp; {this.state.val}
-                {this.state.val === 'I wonder' ? <Child key="1" val="2" /> : <Child key="Childt" val="4" />}
-                <Child key="0" val={this.state.val} />
-            </div>
+				<div className="mystyle" style={{ width: '40%', marginLeft: '30px' }}>
+					{this.state.val === 'I wonder' ? '':<Child key="1" val="2" />}
+					<input onChange={this.Change} type="text" value={this.state.val} />
+					666&nbsp; {this.state.val}
+					{this.state.val !== 'I wonder' ? <Child key="1" val="2" /> : <Child key="3" val="4" />}
+					<Child key="0" val={this.state.val} />
+				</div>
             )
-        }
+        // }
     }
         }
         //this._updateDOMChildren
 
-        // React.render(<Parent />, container);
+        React.render(<Parent />, container);
         // window.ReactDOM.render(<Parent />, container);
         document.body.appendChild(container);
         // expect(console.error.calls.count()).toBe(0);

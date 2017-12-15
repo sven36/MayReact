@@ -57,12 +57,17 @@ function renderComponentChildren(component, parent) {
 	setDomAttr(parent, props);
 	var cdom, c;
 	if (children) {
-		for (let i = 0; i < children.length; i++) {
+		var len = children.length;
+		for (let i = 0; i < len; i++) {
 			var c = children[i];
 			var type = typeof c;
 			switch (type) {
 				case 'string':
 					cdom = document.createTextNode(c);
+					if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
+						cdom.nodeValue += children[i + 1];
+						i++;
+					}
 					parent.appendChild(cdom);
 					break;
 				case 'object': //vnode
@@ -175,14 +180,8 @@ export function reRender(component) {
 }
 
 function mayDiff(prevVnode, updatedVnode, parent) {
-	var keyStore = {};
 	var childList = [].slice.call(parent.childNodes);
-	var prevChildren;
-	if (!prevVnode._vChildren && prevVnode.props.children) {
-		prevChildren = transformChildren(prevVnode.props.children, childList)
-	} else {
-		prevChildren = prevVnode._vChildren;
-	}
+	var prevChildren = prevVnode._vChildren || null;
 	// var newChildren = transformChildren(updatedVnode.props.children);
 	// updatedVnode._vChildren = newChildren;
 	var newRenderedChild = updatedVnode.props.children;
@@ -211,6 +210,8 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 					i++;
 				}
 				break;
+			case 'undefined':
+				break;
 		}
 		prevK = prevChildren[k];
 		if (prevK && prevK.length > 0) { //试试=0 else
@@ -225,7 +226,9 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 				}
 			}
 		}
-		_mountChildren.push(c);
+		if (c) {
+			_mountChildren.push(c);
+		}
 	}
 	for (var name in prevChildren) {
 		var _c = prevChildren[name];
@@ -339,7 +342,7 @@ function transformChildren(children, parent) {
 	var len = children.length;
 	var childList = [].slice.call(parent.childNodes);
 	var result = {};
-	//如有undefined null 未render;
+	//如有undefined null 简单数据类型合并 noCount++;
 	var noCount = 0;
 	for (var i = 0; i < len; i++) {
 		var c = children[i];
@@ -363,12 +366,11 @@ function transformChildren(children, parent) {
 				if (childList[i - noCount]) {
 					tran._hostNode = childList[i - noCount];
 				}
-				// if ((i + 1 < len) && (typeof children[i + 1 - noCount] === 'string')) {
-				// 	tran.value += children[i + 1 - noCount];
-				// 	i++;
-				// 	//删除合并的节点
-				// 	// parent.removeChild(childList[i - noCount]);
-				// }
+				if ((i + 1 < len) && (typeof children[i + 1 - noCount] === 'string')) {
+					tran.value += children[i + 1 - noCount];
+					noCount++;
+					i++;
+				}
 				var _k = '#text';
 				if (!result[_k]) {
 					result[_k] = [tran];
@@ -416,7 +418,8 @@ function diffProps(prev, now) {
 		}
 	}
 	if (props['children']) {
-		diffChildren(prevProps['children'], props['children']);
+		mayDiff(prev, now, now._hostNode);
+		// diffChildren(prevProps['children'], props['children']);
 	}
 }
 function diffChildren(prevChildren, newChildren) {
