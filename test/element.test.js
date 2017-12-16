@@ -87,6 +87,7 @@ describe('may.js', () => {
 					<input onChange={this.Change} type="text" value={this.state.val} />
 					{this.state.val !== 'I wonder' ? <Child key="1" val="2" /> : <Child key="3" val="4" />}
 					<Child key="0" val={this.state.val} />
+					<Child key="0" val={"last"} />
 				</div>
 			);
 		}

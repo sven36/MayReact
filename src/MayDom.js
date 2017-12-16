@@ -129,7 +129,7 @@ function setDomAttr(dom, props) {
 		return;
 	}
 	for (const key in props) {
-		if (key !== 'children' && key !== 'className' && key !== 'key') {
+		if (key !== 'children' && key !== 'className' && key !== 'key' && key !== 'style') {
 			if (key.indexOf('on') !== 0) {
 				if (dom.nodeName !== 'INPUT' && key !== 'value') {
 					dom.setAttribute(key, props[key]);
@@ -142,6 +142,14 @@ function setDomAttr(dom, props) {
 				(dom._listener || (dom._listener = {}))[e] = props[key];
 			}
 		}
+	}
+	if (props['style']) {
+		var _obj = props['style'];
+		var _style = '';
+		for (var name in _obj) {
+			_style += name + ':' + _obj[name] + ';';
+		}
+		dom.setAttribute('style', _style);
 	}
 	if (props['className']) {
 		dom.setAttribute('class', props['className']);
@@ -422,6 +430,7 @@ function diffProps(prev, now) {
 		// diffChildren(prevProps['children'], props['children']);
 	}
 }
+
 function diffChildren(prevChildren, newChildren) {
 
 }

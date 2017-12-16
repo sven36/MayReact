@@ -105,7 +105,7 @@ describe("ReactComponent", function () {
         }
         //this._updateDOMChildren
 
-        React.render(<Parent />, container);
+        // React.render(<Parent />, container);
         // window.ReactDOM.render(<Parent />, container);
         document.body.appendChild(container);
         // expect(console.error.calls.count()).toBe(0);
