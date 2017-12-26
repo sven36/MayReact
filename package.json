@@ -29,6 +29,7 @@
     "webpack": "^3.8.1"
   },
   "dependencies": {
-    "preact-compat": "^3.17.0"
+    "preact-compat": "^3.17.0",
+    "sharp": "^0.18.4"
   }
 }
