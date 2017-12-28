@@ -3,7 +3,7 @@
 #include <ngx_event.h>  
 #include <ngx_http.h>  
 //   ./configure --add-module=/work/sv/env/nginx/nginx-1.6.2/src/mywebp
-//   /usr/local/nginx/sbin/nginx -s reload -c /path/to/nginx.conf
+//   /usr/local/nginx/sbin/nginx -s reload -c /usr/local/nginx/conf/nginx.conf
 //   /usr/local/nginx/sbin/nginx  -c /usr/local/nginx/conf/nginx.conf
 //   /usr/local/nginx/sbin/nginx -s stop
 //   vi /usr/local/nginx/conf/nginx.conf
@@ -11,24 +11,28 @@
 
 static ngx_int_t ngx_http_webp_handler(ngx_http_request_t *r)  
 {  
+    //必须时GET或者HEAD方法，否则返回405 Not Allowed  
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))  
         return NGX_HTTP_NOT_ALLOWED;  
-  
+
+    ngx_table_elt_t *accept=r->headers_in.accept;
+    char *p= strstr(accept.value.data,"image/webp");    
+    //丢弃请求中的包体 
     ngx_int_t rc = ngx_http_discard_request_body(r);  
     if (rc != NGX_OK)  
             return rc;  
-  
+    //设置返回的Content_Type。注意，ngx_str_t有一个很方便的初始化宏ngx_string,它可以把ngx_str_t的data和len成员都设置好
     ngx_str_t type = ngx_string("text/plain");  
     ngx_str_t response = ngx_string("Hello World!");  
   
     r->headers_out.status = NGX_HTTP_OK;  
     r->headers_out.content_length_n = response.len;  
     r->headers_out.content_type = type;  
-  
+    //发送HTTP头部  
     rc = ngx_http_send_header(r);  
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only)  
             return rc;  
-  
+    //构造ngx_buf_t结构体准备发送包体  
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, response.len);  
     if (b == NULL)  
         return NGX_HTTP_INTERNAL_SERVER_ERROR;  
