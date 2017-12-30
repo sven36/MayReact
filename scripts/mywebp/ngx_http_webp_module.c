@@ -8,6 +8,7 @@
 //   /usr/local/nginx/sbin/nginx -s stop
 //   vi /usr/local/nginx/conf/nginx.conf
 //    cat /usr/local/nginx/conf/nginx.conf
+//   可参考 http://blog.csdn.net/lclwjl/article/details/68921563 以及 深入理解ngixn(陶辉著)
 
 static ngx_int_t ngx_http_webp_handler(ngx_http_request_t *r)  
 {  
@@ -15,8 +16,8 @@ static ngx_int_t ngx_http_webp_handler(ngx_http_request_t *r)
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))  
         return NGX_HTTP_NOT_ALLOWED;  
 
-    ngx_table_elt_t *accept=r->headers_in.accept;
-    char *p= strstr(accept.value.data,"image/webp");    
+    // ngx_table_elt_t *accept=r->headers_in.accept;
+    // char *p= strstr(accept.value.data,"image/webp");    
     //丢弃请求中的包体 
     ngx_int_t rc = ngx_http_discard_request_body(r);  
     if (rc != NGX_OK)  
