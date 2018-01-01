@@ -27,6 +27,13 @@ const http = require('http');
 
 const server = http.createServer((req, res) => {
 	var isWebp = false;
+	if (req && req.url === '/') {
+		res.writeHead(200, {
+			"Content-Type": "text/html"
+		});
+		fs.createReadStream(path.join(__dirname, 'webp.html')).pipe(res);
+		return;
+	}
 	if (req && req.headers.accept && req.headers.accept.indexOf('image/webp') > 0) {
 		isWebp = true;
 		console.log(req.accept);
