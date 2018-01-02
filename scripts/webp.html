@@ -11,15 +11,12 @@
             background-color: #f6f6f6;
         }
 
-        @charset "UTF-8";
-        /**
- * 
- * @authors      Benjamin (cuew1987@gmail.com)
- * @link         https://github.com/benjamin-zuo
- * @date         2016-03-11 15:26:52
- * @description  CSS3 混合器
- * @source       https://github.com/thomas-mcdonald/bootstrap-sass/blob/master/vendor/assets/stylesheets/bootstrap/_mixins.scss
- */
+        .lm-ui-upload-img {
+            display: block;
+            width: 300px;
+            height: 150px;
+            background-size: 100% 100%;
+        }
 
         html {
             font-size: 50px;
@@ -200,6 +197,7 @@
             top: 0;
             z-index: 1000;
         }
+
         /** 半透明 **/
 
         .lm-ui-mask-translucent {
@@ -308,6 +306,7 @@
             background-repeat: no-repeat;
             background-size: 100% 100%;
         }
+
         /** 
  * 带icon的样式没有写  用的时候自行加上吧最好是使用伪类来加
  */
@@ -390,6 +389,7 @@
             background-position: center;
             background-size: 16px 16px;
         }
+
         /*.btn-lg {
     padding: 16px 20px;
 }*/
@@ -1031,6 +1031,7 @@
             width: 70px;
             height: 30px;
         }
+
         /** switch **/
 
         .lm-ui-check-switch {
@@ -1094,6 +1095,7 @@
             -webkit-transform: translateX(22px);
             transform: translateX(22px);
         }
+
         /** textarea **/
 
         .lm-ui-textarea {
@@ -1108,6 +1110,7 @@
             padding: 5px 0 10px;
             color: #bdbdbd;
         }
+
         /** 表单校验 **/
 
         .lm-ui-verify .lm-ui-icon-del {
@@ -1182,56 +1185,6 @@
             width: 100%;
         }
 
-        .lm-ui-list .lm-ui-cell::after {
-            left: 0;
-        }
-
-        .lm-ui-vh {
-            vertical-align: middle;
-            font-size: 16px;
-        }
-
-        .lm-ui-desc-header {
-            display: block;
-            width: 50px;
-            height: 50px;
-            margin-right: 10px;
-            padding: 12px 0;
-        }
-
-        .lm-ui-desc-name {
-            font-size: 16px;
-            font-weight: bold;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            width: 100%;
-            padding-right: 10px;
-            margin-bottom: 5px;
-        }
-
-        .lm-ui-desc-detail {
-            font-size: 12px;
-            color: #999;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            width: 100%;
-            padding-right: 10px;
-        }
-
-        .lm-ui-cell-mutil {
-            padding-bottom: 20px;
-            line-height: 1;
-        }
-
-        .lm-ui-cell-mutil .lm-ui-desc-name {
-            margin-bottom: 10px;
-        }
-
-        .lm-ui-list-desc {
-            position: relative;
-        }
 
         .lm-ui-desc-bottom {
             position: absolute;
@@ -1713,38 +1666,38 @@
 </head>
 
 <body>
-        <div class="lm-ui-btn-outer">
-            <div class="lm-ui-page-header">编辑模式</div>
-            <div class="lm-ui-upload-linebox">
-                <div class="lm-ui-btn-select lm-ui-uploadimg">
-                    <div>
-                        <span>
-                            <i class="lm-ui-upload-i upload"></i>
-                        </span>
-                        <span class="lm-ui-upload-img-temp-name">可编辑横版</span>
-                    </div>
-                    <input class="lm-ui-btn-file required" type="file" accept="image/*" data-validate="true" data-name="1001" data-suburl="/uploadimg?u=1234124143&amp;o=9&amp;it=1001"
-                        data-desc="选择图片">
-                    <p>
-                        <span class="lm-ui-upload-img" style="background-image:url(../../static/img/Lighthouse.jpg);" ;=""></span>
-                    </p>
+    <div class="lm-ui-btn-outer">
+        <div class="lm-ui-page-header">编辑模式</div>
+        <div class="lm-ui-upload-linebox">
+            <div class="lm-ui-btn-select lm-ui-uploadimg">
+                <div>
+                    <span>
+                        <i class="lm-ui-upload-i upload"></i>
+                    </span>
+                    <span class="lm-ui-upload-img-temp-name">可编辑横版</span>
                 </div>
+                <input class="lm-ui-btn-file required" type="file" accept="image/*" data-validate="true" data-name="1001" data-suburl="/uploadimg?u=1234124143&amp;o=9&amp;it=1001"
+                    data-desc="选择图片">
+                <p>
+                    <span class="lm-ui-upload-img" style="background-image:url('http://116.196.66.162/assets/src/images/SX.jpg');" ;=""></span>
+                </p>
+            </div>
 
-                <div class="lm-ui-btn-select lm-ui-uploadimg">
-                    <div>
-                        <span>
-                            <i class="lm-ui-upload-i upload"></i>
-                        </span>
-                        <span class="lm-ui-upload-img-temp-name">可编辑竖版</span>
-                    </div>
-                    <input class="lm-ui-btn-file required" type="file" accept="image/*" data-validate="true" data-name="1001" data-suburl="/uploadimg?u=1234124143&amp;o=9&amp;it=1001"
-                        data-desc="选择图片">
-                    <p>
-                        <span class="lm-ui-upload-img" style="background-image:url(../../static/img/upright.jpg);" ;=""></span>
-                    </p>
+            <div class="lm-ui-btn-select lm-ui-uploadimg">
+                <div>
+                    <span>
+                        <i class="lm-ui-upload-i upload"></i>
+                    </span>
+                    <span class="lm-ui-upload-img-temp-name">可编辑竖版</span>
                 </div>
+                <input class="lm-ui-btn-file required" type="file" accept="image/*" data-validate="true" data-name="1001" data-suburl="/uploadimg?u=1234124143&amp;o=9&amp;it=1001"
+                    data-desc="选择图片">
+                <p>
+                    <span class="lm-ui-upload-img" style="background-image:url('http://116.196.66.162/assets/src/images/SX2.jpg');" ;=""></span>
+                </p>
             </div>
         </div>
+    </div>
 </body>
 
 </html>
