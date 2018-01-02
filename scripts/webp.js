@@ -1,4 +1,4 @@
-const sharp = require('sharp');
+// const sharp = require('sharp');
 var path = require('path');
 var fs = require('fs');
 var _img = path.join(__dirname, './img/1.jpg');
