@@ -29,6 +29,7 @@
     "webpack": "^3.8.1"
   },
   "dependencies": {
+    "chokidar": "^2.0.0",
     "preact-compat": "^3.17.0"
   }
 }

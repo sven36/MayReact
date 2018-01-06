@@ -24,7 +24,7 @@ function getWebpImgName(path) {
 
 // 得到shell命令
 function getShellCmd(path) {
-	var com = `.\\libwebp-0.6.1-windows-x64\\bin\\cwebp -q ${quality} ${path} -o ${getWebpImgName(path)}`;
+	var com = `cwebp -q ${quality} ${path} -o ${getWebpImgName(path)}`;
 	console.log(com);
 	return com;
 }
