@@ -2,6 +2,10 @@ import {
 	extend,
 	isSameNodeType
 } from "./may-dom/render-utils";
+import {
+	setDomAttr,
+	eventProxy
+} from './util';
 
 // import {
 // 	diff
@@ -122,46 +126,6 @@ function doRender() {
 	return this.constructor.apply(this, arguments);
 }
 
-function setDomAttr(dom, props) {
-	var nodeType = dom.nodeType;
-	// Don't get/set attributes on text, comment and attribute nodes
-	if (nodeType === 3 || nodeType === 8 || nodeType === 2) {
-		return;
-	}
-	for (const key in props) {
-		if (key !== 'children' && key !== 'className' && key !== 'key' && key !== 'style') {
-			if (key.indexOf('on') !== 0) {
-				if (dom.nodeName !== 'INPUT' && key !== 'value') {
-					dom.setAttribute(key, props[key]);
-				} else { //input value setAttribute会失败 故直接赋值
-					dom[key] = props[key];
-				}
-			} else {
-				var e = key.substring(2).toLowerCase();
-				dom.addEventListener(e, eventProxy);
-				(dom._listener || (dom._listener = {}))[e] = props[key];
-			}
-		}
-	}
-	if (props['style']) {
-		var _obj = props['style'];
-		var _style = '';
-		for (var name in _obj) {
-			_style += name + ':' + _obj[name] + ';';
-		}
-		dom.setAttribute('style', _style);
-	}
-	if (props['className']) {
-		dom.setAttribute('class', props['className']);
-	}
-
-	// var currentVal = dom.getAttribute(name);
-
-}
-
-function eventProxy(e) {
-	return this._listener[e.type](e);
-}
 export function reRender(component) {
 	var props = component.props;
 	var context = component.context;

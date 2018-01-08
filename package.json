@@ -23,6 +23,8 @@
     "karma-firefox-launcher": "^1.0.1",
     "karma-jasmine": "^1.1.0",
     "karma-webpack": "^2.0.6",
+    "react": "^16.2.0",
+    "react-dom": "^16.2.0",
     "rollup": "^0.50.1",
     "rollup-plugin-babel": "^3.0.2",
     "webpack": "^3.8.1"
