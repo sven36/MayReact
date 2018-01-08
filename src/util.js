@@ -1,4 +1,4 @@
-const cssNames = {
+const cssSuffix = {
     //需要加后缀如 px s(秒)等css属性摘出来
     //其实用正则更简洁一些,不过可能 可读性可维护性不如key value
     //动画属性（Animation）
@@ -27,6 +27,7 @@ const cssNames = {
     //CSS 字体属性（Font） font-variant:small-caps; 段落设置为小型大写字母字体
     fontSize: 'px',
     //CSS 外边距属性（Margin）
+    margin: 'px',
     marginLeft: 'px',
     marginRight: 'px',
     marginTop: 'px',
@@ -42,6 +43,7 @@ const cssNames = {
     WebkitColumnWidth: 'px',
     MozColumnWidth: 'px',
     //CSS 内边距属性（Padding）
+    padding: 'px',
     paddingLeft: 'px',
     paddingRight: 'px',
     paddingTop: 'px',
@@ -52,9 +54,8 @@ const cssNames = {
     top: 'px',
     bottom: 'px',
     //CSS 文本属性（Text）
-    letterSpacing:'px',
-    lineHeight:'px'
-
+    letterSpacing: 'px',
+    lineHeight: 'px'
 }
 
 
@@ -83,6 +84,9 @@ export function setDomAttr(dom, props) {
         var _obj = props['style'];
         var _style = '';
         for (var name in _obj) {
+            if (cssSuffix[name]) {
+                typeof _obj[name] === 'number' && _obj[name] !== 0 && (_obj[name] += cssSuffix[name]);
+            }
             _style += name + ':' + _obj[name] + ';';
         }
         dom.setAttribute('style', _style);

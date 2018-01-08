@@ -9,13 +9,13 @@
 
 'use strict';
 
-// import React from '../../src/May';
+import React from '../../src/May';
 
-// import ReactDOMServer from '../../src/may-server/MayServer'
+import ReactDOMServer from '../../src/may-server/MayServer'
 
-var React = require('react');
-var ReactDOM = require('react-dom');
-var ReactDOMServer = require('react-dom/server');
+// var React = require('react');
+// var ReactDOM = require('react-dom');
+// var ReactDOMServer = require('react-dom/server');
 
 function normalizeCodeLocInfo(str) {
   return str && str.replace(/at .+?:\d+/g, 'at **');
@@ -27,12 +27,13 @@ describe('CSSPropertyOperations', () => {
       left: 0,
       margin: 16,
       opacity: 0.5,
-      columnGap: 60,
-      WebkitFlex: 1,
-      MozColumnGap: 60,
+      // columnGap: 60,
+      // transform: 'translate(10,20)',
+      // WebkitFlex: 1,
+      // MozColumnGap: 60,
       padding: '4px',
     };
-    var div = < div style = {
+    var div = < div style={
       styles
     }
     />;
