@@ -99,28 +99,29 @@ export function setDomAttr(dom, props) {
         var _obj = props['style'];
         var _style = '';
         for (var name in _obj) {
-            //backgroundColor 替换为 background-color Webkit替换为-webkit-   ms单独替换一次
-            _style += name.replace(/([A-Z])/g, '-$1').replace(/^ms-/i, '-ms-') + ':';
+            if (_obj[name] !== null) {
+                //backgroundColor 替换为 background-color Webkit替换为-webkit-   ms单独替换一次
+                _style += name.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^ms-/i, '-ms-') + ':';
 
-            var _type = typeof _obj[name];
-            switch (_type) {
-                case 'string':
-                    _style += _obj[name].trim() + ';';
-                    break;
-                case 'number':
-                    _style += _obj[name];
-                    if (cssSuffix[name]) {
-                        _style += _obj[name] !== 0 ? +cssSuffix[name] : '';
-                    }
-                    _style += ';';
-                    break;
-                default:
-                    _style += _obj[name] + ';';
-                    break;
+                var _type = typeof _obj[name];
+                switch (_type) {
+                    case 'string':
+                        _style += _obj[name].trim() + ';';
+                        break;
+                    case 'number':
+                        _style += _obj[name];
+                        if (cssSuffix[name]) {
+                            _style += _obj[name] !== 0 ? +cssSuffix[name] : '';
+                        }
+                        _style += ';';
+                        break;
+                    default:
+                        _style += _obj[name] + ';';
+                        break;
+                }
+                dom.setAttribute('style', _style);
             }
-
         }
-        dom.setAttribute('style', _style);
     }
     if (props['className']) {
         dom.setAttribute('class', props['className']);

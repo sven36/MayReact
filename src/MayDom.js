@@ -311,9 +311,9 @@ function flushUnMounts(oldChildren) {
 //render过程中有Key的 是最有可能变动的，无Key的很可能不会变（绝大部分情况）
 //把children带Key的放一起  不带Key的放一起（因为他们很可能不变化，顺序也不变减少diff寻找）
 function transformChildren(children, parent) {
-	var len = children.length;
+	var len = children && children.length;
 	var childList = [].slice.call(parent.childNodes);
-	var result = {};
+	var result = children ? {} : null;
 	//如有undefined null 简单数据类型合并 noCount++;
 	var noCount = 0;
 	for (var i = 0; i < len; i++) {
