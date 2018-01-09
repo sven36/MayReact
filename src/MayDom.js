@@ -386,7 +386,7 @@ function diffProps(prev, now) {
 	for (var name in props) {
 		if (name !== 'children' && !(props[name] === prevProps[name])) {
 			setDomAttr(now._hostNode, props);
-			return;
+			break;
 		}
 	}
 	if (props['children']) {

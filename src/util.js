@@ -57,8 +57,23 @@ const cssSuffix = {
     letterSpacing: 'px',
     lineHeight: 'px'
 }
+const cssPrefix = {
+    //动画属性（Animation）
+    /* Safari 和 Chrome */
+    WebkitAnimation: '-webkit-animation',
+    WebkitAnimationName: '-webkit-animation-name',
+    WebkitAnimationDuration: '-webkit-animation-duration',
+    WebkitAnimationTimingFunction: '-webkit-animation-timing-function',
+    WebkitAnimationDelay: '-webkit-animation-delay',
+}
 
 
+//有个trim方法 兼容性需要处理
+/**
+ * 设置DOM属性
+ * @param {*} dom 
+ * @param {*} props 
+ */
 export function setDomAttr(dom, props) {
     var nodeType = dom.nodeType;
     // Don't get/set attributes on text, comment and attribute nodes
@@ -84,10 +99,26 @@ export function setDomAttr(dom, props) {
         var _obj = props['style'];
         var _style = '';
         for (var name in _obj) {
-            if (cssSuffix[name]) {
-                typeof _obj[name] === 'number' && _obj[name] !== 0 && (_obj[name] += cssSuffix[name]);
+            //backgroundColor 替换为 background-color Webkit替换为-webkit-   ms单独替换一次
+            _style += name.replace(/([A-Z])/g, '-$1').replace(/^ms-/i, '-ms-') + ':';
+
+            var _type = typeof _obj[name];
+            switch (_type) {
+                case 'string':
+                    _style += _obj[name].trim() + ';';
+                    break;
+                case 'number':
+                    _style += _obj[name];
+                    if (cssSuffix[name]) {
+                        _style += _obj[name] !== 0 ? +cssSuffix[name] : '';
+                    }
+                    _style += ';';
+                    break;
+                default:
+                    _style += _obj[name] + ';';
+                    break;
             }
-            _style += name + ':' + _obj[name] + ';';
+
         }
         dom.setAttribute('style', _style);
     }
