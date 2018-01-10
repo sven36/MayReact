@@ -57,15 +57,6 @@ const cssSuffix = {
     letterSpacing: 'px',
     lineHeight: 'px'
 }
-const cssPrefix = {
-    //动画属性（Animation）
-    /* Safari 和 Chrome */
-    WebkitAnimation: '-webkit-animation',
-    WebkitAnimationName: '-webkit-animation-name',
-    WebkitAnimationDuration: '-webkit-animation-duration',
-    WebkitAnimationTimingFunction: '-webkit-animation-timing-function',
-    WebkitAnimationDelay: '-webkit-animation-delay',
-}
 
 
 //有个trim方法 兼容性需要处理

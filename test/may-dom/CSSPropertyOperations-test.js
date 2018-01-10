@@ -98,7 +98,7 @@ describe('CSSPropertyOperations', () => {
 		var div = <div style={styles} />;
 		var html = ReactDOMServer.renderToString(div);
 		expect(/style=/.test(html)).toBe(false);
-	});*/
+	});
 
 	 it('should warn when using hyphenated style names', () => {
 	   class Comp extends React.Component {
@@ -120,7 +120,7 @@ describe('CSSPropertyOperations', () => {
 	   );
 	 });
    
-	 /*it('should warn when updating hyphenated style names', () => {
+	 it('should warn when updating hyphenated style names', () => {
 	   class Comp extends React.Component {
 		 static displayName = 'Comp';
    
@@ -242,9 +242,9 @@ describe('CSSPropertyOperations', () => {
 		   '\n    in div (at **)' +
 		   '\n    in Comp (at **)',
 	   );
-	 });
+	 });*/
    
-	 it('should not warn when setting CSS custom properties', () => {
+	/* it('should not warn when setting CSS custom properties', () => {
 	   class Comp extends React.Component {
 		 render() {
 		   return <div style={{'--foo-primary': 'red', backgroundColor: 'red'}} />;
