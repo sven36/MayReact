@@ -30,14 +30,16 @@ var renderByMay = function (vnode, container, callback) {
 	if (vnode && vnode.type) {
 		if (typeof vnode.type === 'function') {
 			renderedVnode = buildComponentFromVnode(vnode);
-			rootDom = document.createElement(renderedVnode.type);
-			renderComponentChildren(renderedVnode, rootDom);
+			var _isSvg = renderedVnode.type === 'svg';
+			rootDom = _createElement(renderedVnode.type);
+			renderComponentChildren(renderedVnode, rootDom,_isSvg);
 			//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
 			renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
 			renderedVnode._hostNode = rootDom;
 		} else if (typeof vnode.type === 'string') {
-			rootDom = document.createElement(vnode.type);
-			renderComponentChildren(vnode, rootDom);
+			var _isSvg = vnode.type === 'svg';
+			rootDom = _createElement(vnode.type);
+			renderComponentChildren(vnode, rootDom,_isSvg);
 		}
 	} else {
 		console.error('render参数错误');
@@ -50,9 +52,13 @@ var renderByMay = function (vnode, container, callback) {
 	}
 }
 
+function _createElement(type, isSvg) {
+	return !isSvg ? document.createElement(type) : document.createElementNS("http://www.w3.org/2000/svg", type);
+}
 
 
-function renderComponentChildren(component, parent) {
+
+function renderComponentChildren(component, parent,isSvg) {
 	//component实例化的DOM setState需要知道其真实DOM 然后diff其children
 	// component._hostNode = parent;
 

@@ -75,7 +75,12 @@ export function setDomAttr(dom, props) {
         if (key !== 'children' && key !== 'className' && key !== 'key' && key !== 'style') {
             if (key.indexOf('on') !== 0) {
                 if (dom.nodeName !== 'INPUT' && key !== 'value') {
-                    dom.setAttribute(key, props[key]);
+                    if (props[key] !== null && props[key] !== false) {
+                        dom.setAttribute(key, props[key]);
+                    } else {
+                        //如果是null 或 false 不必添加
+                        dom.removeAttribute(key, props[key]);
+                    }
                 } else { //input value setAttribute会失败 故直接赋值
                     dom[key] = props[key];
                 }

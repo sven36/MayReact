@@ -19,7 +19,12 @@ var ReactDOM = {
 
 // var React = require('react');//hyphenate
 // var ReactDOM = require('react-dom');
-// var ReactDOMServer = require('react-dom/server');
+
+
+// import React from "../../dist/ReactANU";
+// var ReactDOM = {
+// 	render: React.render
+// }
 
 describe('DOMPropertyOperations', () => {
 //   var React;
@@ -32,7 +37,7 @@ describe('DOMPropertyOperations', () => {
 //   });
 
   describe('setValueForProperty', () => {
-    it('should set values as properties by default', () => {
+    /*it('should set values as properties by default', () => {
       var container = document.createElement('div');
       ReactDOM.render(<div title="Tip!" />, container);
       expect(container.firstChild.title).toBe('Tip!');
@@ -47,7 +52,11 @@ describe('DOMPropertyOperations', () => {
 
     it('should set values as namespace attributes if necessary', () => {
       var container = document.createElement('svg');
-      ReactDOM.render(<image xlinkHref="about:blank" />, container);
+    //   var svg = <svg xmlns="http://www.w3.org/2000/svg" version="1.1">
+    //     <circle cx="100" cy="50" r="40" stroke="black" stroke-width="2" fill="red" />
+	//   </svg>;//
+	  var svg=<image xlinkHref="about:blank" />;
+      ReactDOM.render(svg, container);
       expect(
         container.firstChild.getAttributeNS(
           'http://www.w3.org/1999/xlink',
@@ -56,7 +65,7 @@ describe('DOMPropertyOperations', () => {
       ).toBe('about:blank');
     });
 
-    /*it('should set values as boolean properties', () => {
+    it('should set values as boolean properties', () => {
       var container = document.createElement('div');
       ReactDOM.render(<div disabled="disabled" />, container);
       expect(container.firstChild.getAttribute('disabled')).toBe('');
@@ -116,7 +125,7 @@ describe('DOMPropertyOperations', () => {
       // some browsers)
       expect(container.firstChild.className).toBe('');
       expect(container.firstChild.getAttribute('class')).toBe(null);
-    });
+    });*/
 
     it('should remove property properly for boolean properties', () => {
       var container = document.createElement('div');
@@ -124,7 +133,7 @@ describe('DOMPropertyOperations', () => {
       expect(container.firstChild.hasAttribute('hidden')).toBe(true);
       ReactDOM.render(<div hidden={false} />, container);
       expect(container.firstChild.hasAttribute('hidden')).toBe(false);
-    });*/
+    });//*/
   });
 
   /*describe('value mutation method', function() {
