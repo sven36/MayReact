@@ -4,7 +4,8 @@ import {
 } from "./may-dom/render-utils";
 import {
 	setDomAttr,
-	eventProxy
+	eventProxy,
+	removeDomAttr
 } from './util';
 
 // import {
@@ -26,30 +27,39 @@ export function render(vnode, container, merge) {
  */
 var renderByMay = function (vnode, container, callback) {
 	var renderedVnode, rootDom;
-
-	if (vnode && vnode.type) {
-		if (typeof vnode.type === 'function') {
-			renderedVnode = buildComponentFromVnode(vnode);
-			var _isSvg = renderedVnode.type === 'svg';
-			rootDom = _createElement(renderedVnode.type);
-			renderComponentChildren(renderedVnode, rootDom,_isSvg);
-			//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
-			renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
-			renderedVnode._hostNode = rootDom;
-		} else if (typeof vnode.type === 'string') {
-			var _isSvg = vnode.type === 'svg';
-			rootDom = _createElement(vnode.type);
-			renderComponentChildren(vnode, rootDom,_isSvg);
+	var lastVnode = container._lastVnode || null;
+	if (lastVnode) {
+		vnode._hostNode = lastVnode._hostNode || null;
+		diffProps(lastVnode, vnode)
+		container._lastVnode = vnode;
+	} else {
+		if (vnode && vnode.type) {
+			if (typeof vnode.type === 'function') {
+				renderedVnode = buildComponentFromVnode(vnode);
+				var _isSvg = renderedVnode.type === 'svg';
+				rootDom = _createElement(renderedVnode.type);
+				renderComponentChildren(renderedVnode, rootDom, _isSvg);
+				//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
+				renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
+				renderedVnode._hostNode = rootDom;
+			} else if (typeof vnode.type === 'string') {
+				var _isSvg = vnode.type === 'svg';
+				rootDom = _createElement(vnode.type);
+				vnode._hostNode = rootDom;
+				renderComponentChildren(vnode, rootDom, _isSvg);
+			}
+		} else {
+			console.error('render参数错误');
+			return;
 		}
-	} else {
-		console.error('render参数错误');
-		return;
+		if (container && container.appendChild && rootDom) {
+			container._lastVnode = vnode;
+			container.appendChild(rootDom);
+		} else {
+			throw new Error('container参数错误');
+		}
 	}
-	if (container && container.appendChild && rootDom) {
-		container.appendChild(rootDom);
-	} else {
-		throw new Error('container参数错误');
-	}
+
 }
 
 function _createElement(type, isSvg) {
@@ -58,7 +68,7 @@ function _createElement(type, isSvg) {
 
 
 
-function renderComponentChildren(component, parent,isSvg) {
+function renderComponentChildren(component, parent, isSvg) {
 	//component实例化的DOM setState需要知道其真实DOM 然后diff其children
 	// component._hostNode = parent;
 
@@ -389,20 +399,22 @@ function disposeDom(dom) {
 function diffProps(prev, now) {
 	var prevProps = prev.props;
 	var props = now.props;
+	var hostNode = now._hostNode;
 	for (var name in props) {
 		if (name !== 'children' && !(props[name] === prevProps[name])) {
-			setDomAttr(now._hostNode, props);
+			setDomAttr(hostNode, props);
 			break;
 		}
 	}
+	for (var prev in prevProps) {
+		if (prev !== 'children' && (props[prev] === void 666)) {
+			removeDomAttr(hostNode, prevProps, prev);
+		}
+	}
+
 	if (props['children']) {
 		mayDiff(prev, now, now._hostNode);
-		// diffChildren(prevProps['children'], props['children']);
 	}
-}
-
-function diffChildren(prevChildren, newChildren) {
-
 }
 
 function genKey(child) {

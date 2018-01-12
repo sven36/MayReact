@@ -125,7 +125,7 @@ describe('DOMPropertyOperations', () => {
       // some browsers)
       expect(container.firstChild.className).toBe('');
       expect(container.firstChild.getAttribute('class')).toBe(null);
-    });*/
+    });
 
     it('should remove property properly for boolean properties', () => {
       var container = document.createElement('div');
@@ -133,7 +133,7 @@ describe('DOMPropertyOperations', () => {
       expect(container.firstChild.hasAttribute('hidden')).toBe(true);
       ReactDOM.render(<div hidden={false} />, container);
       expect(container.firstChild.hasAttribute('hidden')).toBe(false);
-    });//*/
+    });*/
   });
 
   /*describe('value mutation method', function() {
@@ -161,8 +161,8 @@ describe('DOMPropertyOperations', () => {
     });
   });*/
 
-  /*describe('deleteValueForProperty', () => {
-    it('should remove attributes for normal properties', () => {
+  describe('deleteValueForProperty', () => {
+    /*it('should remove attributes for normal properties', () => {
       var container = document.createElement('div');
       ReactDOM.render(<div title="foo" />, container);
       expect(container.firstChild.getAttribute('title')).toBe('foo');
@@ -189,6 +189,6 @@ describe('DOMPropertyOperations', () => {
       expect(console.error.calls.argsFor(0)[0]).toContain(
         'A component is changing a controlled input of type text to be uncontrolled',
       );
-    });
-  });*/
+    });*/
+  });
 });

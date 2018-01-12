@@ -74,14 +74,15 @@ export function setDomAttr(dom, props) {
     for (const key in props) {
         if (key !== 'children' && key !== 'className' && key !== 'key' && key !== 'style') {
             if (key.indexOf('on') !== 0) {
-                if (dom.nodeName !== 'INPUT' && key !== 'value') {
+                if (dom.nodeName !== 'INPUT') {
                     if (props[key] !== null && props[key] !== false) {
-                        dom.setAttribute(key, props[key]);
+                        //attribute 永远是字符串
+                        dom.setAttribute(key, props[key] + '');
                     } else {
                         //如果是null 或 false 不必添加
-                        dom.removeAttribute(key, props[key]);
+                        dom.removeAttribute(key);
                     }
-                } else { //input value setAttribute会失败 故直接赋值
+                } else { //input value是property属性 直接赋值即可
                     dom[key] = props[key];
                 }
             } else {
@@ -126,7 +127,29 @@ export function setDomAttr(dom, props) {
     // var currentVal = dom.getAttribute(name);
 
 }
+export function removeDomAttr(dom, props, key) {
+    var nodeType = dom.nodeType;
+    // Don't get/set attributes on text, comment and attribute nodes
+    if (nodeType === 3 || nodeType === 8 || nodeType === 2) {
+        return;
+    }
+    if (key.indexOf('on') !== 0) {
+        switch (key) {
+            case 'className':
+                dom.removeAttribute('class');
+                break;
+            default:
+                if (dom.nodeName !== 'INPUT') {
+                    dom.removeAttribute(key);
+                }//input 标签如果去掉其value 会把受控组件转为非受控组件 不推荐
+                break;
+        }
+    } else {
+        dom.removeEventListener(key, eventProxy);
+    }
 
+
+}
 
 export function eventProxy(e) {
     return this._listener[e.type](e);
