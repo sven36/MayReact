@@ -1,9 +1,17 @@
-import {createElement} from './MayElement';
-import {Component} from './Component';
+import {
+    createElement
+} from './MayElement';
+import {
+    Component
+} from './Component';
+import {
+    cloneElement
+} from './cloneElement';
 
-var May={
-    createElement:createElement,
-    Component:Component,
+var May = {
+    createElement: createElement,
+    Component: Component,
+    cloneElement: cloneElement
 }
 export {
     createElement,

@@ -1,4 +1,3 @@
-
 /**
  * 
  * @param {*} type dom类型或func
@@ -27,9 +26,13 @@ export function createElement(type, config, children) {
             array.push(arguments[i + 2]);
         }
         props.children = array;
-    } else if (len === 1) {
-        props.children = [];
-        props.children[0] = children;
+    } else if (len === 1 && children) {
+        if (!Array.isArray(children)) {
+            props.children = [];
+            props.children[0] = children;
+        } else {
+            props.children = children;
+        }
     }
     return new Vnode(type, key, ref, props);
 }
@@ -77,6 +80,10 @@ function render(vnode) {
 
     return n;
 }*/
+
+// function isArray(o) {
+//     return Object.prototype.toString.call(o) == '[object Array]';
+// }
 
 function extend(target, src) {
     for (var key in src) {

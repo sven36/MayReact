@@ -53,7 +53,7 @@ describe('ReactChildReconciler', () => {
     };
   }
 
-  it('warns for duplicated array keys', () => {
+  /*it('warns for duplicated array keys', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {
@@ -64,16 +64,16 @@ describe('ReactChildReconciler', () => {
 
     ReactTestUtils.renderIntoDocument(<Component />);
 
-    expectDev(console.error.calls.count()).toBe(1);
-    expectDev(console.error.calls.argsFor(0)[0]).toContain(
+    expect(console.error.calls.count()).toBe(1);
+    expect(console.error.calls.argsFor(0)[0]).toContain(
       'Keys should be unique so that components maintain their identity ' +
         'across updates. Non-unique keys may cause children to be ' +
         'duplicated and/or omitted — the behavior is unsupported and ' +
         'could change in a future version.',
     );
-  });
+  });*/
 
-  /*it('warns for duplicated array keys with component stack info', () => {
+  it('warns for duplicated array keys with component stack info', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {
@@ -83,12 +83,24 @@ describe('ReactChildReconciler', () => {
     }
 
     class Parent extends React.Component {
+        componentWillMount(){
+            console.log('Parent Will Mount');
+        }
+        componentDidMount(){
+            console.log('Parent Did Mount');
+        }
       render() {
         return React.cloneElement(this.props.child);
       }
     }
 
     class GrandParent extends React.Component {
+        componentWillMount(){
+            console.log('GrandParent Will Mount');
+        }
+        componentDidMount(){
+            console.log('GrandParent Did Mount');
+        }
       render() {
         return <Parent child={<Component />} />;
       }
@@ -96,8 +108,8 @@ describe('ReactChildReconciler', () => {
 
     ReactTestUtils.renderIntoDocument(<GrandParent />);
 
-    expectDev(console.error.calls.count()).toBe(1);
-    expectDev(
+    expect(console.error.calls.count()).toBe(1);
+    expect(
       normalizeCodeLocInfo(console.error.calls.argsFor(0)[0]),
     ).toContain(
       'Encountered two children with the same key, `1`. ' +
@@ -112,7 +124,7 @@ describe('ReactChildReconciler', () => {
     );
   });
 
-  it('warns for duplicated iterable keys', () => {
+  /*it('warns for duplicated iterable keys', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {

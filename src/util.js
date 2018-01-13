@@ -141,7 +141,7 @@ export function removeDomAttr(dom, props, key) {
             default:
                 if (dom.nodeName !== 'INPUT') {
                     dom.removeAttribute(key);
-                }//input 标签如果去掉其value 会把受控组件转为非受控组件 不推荐
+                } //input 标签如果去掉其value 会把受控组件转为非受控组件 不推荐
                 break;
         }
     } else {
@@ -153,4 +153,10 @@ export function removeDomAttr(dom, props, key) {
 
 export function eventProxy(e) {
     return this._listener[e.type](e);
+}
+export function extend(target, src) {
+    for (var key in src) {
+        target[key] = src[key];
+    }
+    return target;
 }

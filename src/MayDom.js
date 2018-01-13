@@ -1,7 +1,6 @@
 import {
-	extend,
-	isSameNodeType
-} from "./may-dom/render-utils";
+	extend
+} from "./util";
 import {
 	setDomAttr,
 	eventProxy,
@@ -28,7 +27,7 @@ export function render(vnode, container, merge) {
 var renderByMay = function (vnode, container, callback) {
 	var renderedVnode, rootDom;
 	var lastVnode = container._lastVnode || null;
-	if (lastVnode) {
+	if (lastVnode) { //针对两次render
 		vnode._hostNode = lastVnode._hostNode || null;
 		diffProps(lastVnode, vnode)
 		container._lastVnode = vnode;
@@ -37,7 +36,12 @@ var renderByMay = function (vnode, container, callback) {
 			if (typeof vnode.type === 'function') {
 				renderedVnode = buildComponentFromVnode(vnode);
 				var _isSvg = renderedVnode.type === 'svg';
-				rootDom = _createElement(renderedVnode.type);
+				if (typeof renderedVnode.type === 'string') {
+					rootDom = _createElement(renderedVnode.type);
+				}
+				//为什么React使用var markup=renderChilden();这样的形式呢; 2018-1-13
+				//因为如果按renderComponentChildren(renderedVnode, rootDom, _isSvg);传入container这种
+				//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
 				renderComponentChildren(renderedVnode, rootDom, _isSvg);
 				//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
 				renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
@@ -74,7 +78,15 @@ function renderComponentChildren(component, parent, isSvg) {
 
 	var children = component.props.children || undefined;
 	var props = component.props;
-	setDomAttr(parent, props);
+	if (parent) {
+		setDomAttr(parent, props);
+	} else { //component.type 仍为function
+		var renderedVnode = buildComponentFromVnode(component);
+		if (typeof renderedVnode.type === 'string') {
+			parent = _createElement(renderedVnode.type);
+		}
+		renderComponentChildren(renderedVnode, parent);
+	}
 	var cdom, c;
 	if (children) {
 		var len = children.length;
