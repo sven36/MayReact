@@ -35,22 +35,18 @@ var renderByMay = function (vnode, container, callback) {
 		if (vnode && vnode.type) {
 			if (typeof vnode.type === 'function') {
 				renderedVnode = buildComponentFromVnode(vnode);
-				var _isSvg = renderedVnode.type === 'svg';
-				if (typeof renderedVnode.type === 'string') {
-					rootDom = _createElement(renderedVnode.type);
-				}
+
 				//为什么React使用var markup=renderChilden();这样的形式呢; 2018-1-13
 				//因为如果按renderComponentChildren(renderedVnode, rootDom, _isSvg);传入container这种
 				//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
-				renderComponentChildren(renderedVnode, rootDom, _isSvg);
+				rootDom = renderComponentChildren(renderedVnode);
+
 				//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
 				renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
 				renderedVnode._hostNode = rootDom;
 			} else if (typeof vnode.type === 'string') {
-				var _isSvg = vnode.type === 'svg';
-				rootDom = _createElement(vnode.type);
+				rootDom = renderComponentChildren(vnode);
 				vnode._hostNode = rootDom;
-				renderComponentChildren(vnode, rootDom, _isSvg);
 			}
 		} else {
 			console.error('render参数错误');
@@ -72,20 +68,21 @@ function _createElement(type, isSvg) {
 
 
 
-function renderComponentChildren(component, parent, isSvg) {
-	//component实例化的DOM setState需要知道其真实DOM 然后diff其children
-	// component._hostNode = parent;
+function renderComponentChildren(vnode) {
+	var _type = vnode.type;
+	var isSvg = _type === 'svg';
+	var isComponent = typeof _type === 'function';
+	var hostNode = null;
 
-	var children = component.props.children || undefined;
-	var props = component.props;
-	if (parent) {
-		setDomAttr(parent, props);
+	var children = vnode.props.children || undefined;
+	var props = vnode.props;
+	if (!isComponent) {
+		hostNode = _createElement(_type, isSvg);
+		setDomAttr(hostNode, props);
 	} else { //component.type 仍为function
-		var renderedVnode = buildComponentFromVnode(component);
-		if (typeof renderedVnode.type === 'string') {
-			parent = _createElement(renderedVnode.type);
-		}
-		renderComponentChildren(renderedVnode, parent);
+		var _renderedVnode = buildComponentFromVnode(vnode);
+		hostNode = renderComponentChildren(_renderedVnode);
+		_renderedVnode._vChildren = transformChildren(_renderedVnode.props.children, hostNode);
 	}
 	var cdom, c;
 	if (children) {
@@ -100,28 +97,28 @@ function renderComponentChildren(component, parent, isSvg) {
 						cdom.nodeValue += children[i + 1];
 						i++;
 					}
-					parent.appendChild(cdom);
+					hostNode.appendChild(cdom);
 					break;
 				case 'object': //vnode
-					if (typeof c.type === 'string') {
-						cdom = document.createElement(c.type);
-						c._hostNode = cdom;
-						renderComponentChildren(c, cdom);
-					} else {
-						//component  vnode.type 为function
-						var renderedVnode = buildComponentFromVnode(c);
-						cdom = document.createElement(renderedVnode.type);
-						renderComponentChildren(renderedVnode, cdom);
-						renderedVnode._vChildren = transformChildren(renderedVnode.props.children, cdom);
-						c._hostNode = cdom;
-					}
-					parent.appendChild(cdom);
+					// if (typeof c.type === 'string') {
+					cdom = renderComponentChildren(c);
+					c._hostNode = cdom;
+
+					// } else {
+					// 	//component  vnode.type 为function
+					// 	var renderedVnode = buildComponentFromVnode(c);
+					// 	cdom = document.createElement(renderedVnode.type);
+					// 	renderComponentChildren(renderedVnode, cdom);
+					// 	renderedVnode._vChildren = transformChildren(renderedVnode.props.children, cdom);
+					// 	c._hostNode = cdom;
+					// }
+					hostNode.appendChild(cdom);
 				case 'undefined':
 					break;
 			}
 		}
 	}
-	if (component.componentDidMount) component.componentDidMount();
+	return hostNode;
 }
 
 function buildComponentFromVnode(vnode) {
@@ -141,7 +138,8 @@ function buildComponentFromVnode(vnode) {
 		// vnode.type === 'function' 代表其为Component Component中才能setState
 		//setState会触发reRender 故保存有助于domDiff的参数
 		component._renderedVnode = renderedVnode;
-		//
+		if (component.componentDidMount) component.componentDidMount();
+
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		renderedVnode = Ctor.call(vnode, props, context);
 	}
@@ -268,8 +266,7 @@ function flushMounts(newChildren, parent) {
 						parent.appendChild(newDom);
 					}
 				} else {
-					newDom = document.createElement(renderedVnode.type);
-					renderComponentChildren(renderedVnode, newDom);
+					newDom = renderComponentChildren(renderedVnode);
 					renderedVnode._vChildren = transformChildren(renderedVnode.props.children, newDom);
 					var node = parent.childNodes[_i];
 					if (node) {

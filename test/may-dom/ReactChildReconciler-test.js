@@ -12,14 +12,22 @@
 
 'use strict';
 
-import React from '../../src/May';
-import { render } from '../../src/MayDom'
-var ReactDOM = {
-	render: render
-}
+// import React from '../../src/May';
+// import { render } from '../../src/MayDom'
+// var ReactDOM = {
+// 	render: render
+// }
+
+// import React from "../../dist/ReactANU";
+// var ReactDOM = {
+// 	render: React.render
+// }
+var React = require('react');//hyphenate
+var ReactDOM = require('react-dom');
+
 var ReactTestUtils = {};
 ReactTestUtils.renderIntoDocument = function (component) {
-	var div = document.createElement('div')
+	var div = document.body;
 	ReactDOM.render(component, div);
 }
 
@@ -71,14 +79,14 @@ describe('ReactChildReconciler', () => {
         'duplicated and/or omitted — the behavior is unsupported and ' +
         'could change in a future version.',
     );
-  });*/
+  });
 
   it('warns for duplicated array keys with component stack info', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {
       render() {
-        return <div>{[<div key="1" />, <div key="1" />]}</div>;
+        return <p>{[<span key="1" />, <span key="1" />]}</p>;
       }
     }
 
@@ -122,9 +130,9 @@ describe('ReactChildReconciler', () => {
         '    in Parent (at **)\n' +
         '    in GrandParent (at **)',
     );
-  });
+  });*/
 
-  /*it('warns for duplicated iterable keys', () => {
+  it('warns for duplicated iterable keys', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {
@@ -135,8 +143,8 @@ describe('ReactChildReconciler', () => {
 
     ReactTestUtils.renderIntoDocument(<Component />);
 
-    expectDev(console.error.calls.count()).toBe(1);
-    expectDev(console.error.calls.argsFor(0)[0]).toContain(
+    expect(console.error.calls.count()).toBe(1);
+    expect(console.error.calls.argsFor(0)[0]).toContain(
       'Keys should be unique so that components maintain their identity ' +
         'across updates. Non-unique keys may cause children to be ' +
         'duplicated and/or omitted — the behavior is unsupported and ' +
@@ -144,7 +152,7 @@ describe('ReactChildReconciler', () => {
     );
   });
 
-  it('warns for duplicated iterable keys with component stack info', () => {
+  /*it('warns for duplicated iterable keys with component stack info', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {
