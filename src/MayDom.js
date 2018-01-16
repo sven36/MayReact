@@ -55,6 +55,7 @@ var renderByMay = function (vnode, container, callback) {
 		if (container && container.appendChild && rootDom) {
 			container._lastVnode = vnode;
 			container.appendChild(rootDom);
+			return container;
 		} else {
 			throw new Error('container参数错误');
 		}
@@ -100,19 +101,21 @@ function renderComponentChildren(vnode) {
 					hostNode.appendChild(cdom);
 					break;
 				case 'object': //vnode
-					// if (typeof c.type === 'string') {
-					cdom = renderComponentChildren(c);
-					c._hostNode = cdom;
-
-					// } else {
-					// 	//component  vnode.type 为function
-					// 	var renderedVnode = buildComponentFromVnode(c);
-					// 	cdom = document.createElement(renderedVnode.type);
-					// 	renderComponentChildren(renderedVnode, cdom);
-					// 	renderedVnode._vChildren = transformChildren(renderedVnode.props.children, cdom);
-					// 	c._hostNode = cdom;
-					// }
-					hostNode.appendChild(cdom);
+					if (c.type) {
+						cdom = renderComponentChildren(c);
+						c._hostNode = cdom;
+						hostNode.appendChild(cdom);
+					} else { //有可能是子数组iterator
+						var iteratorFn = getIteractor(c);
+						if (iteratorFn) {
+							var ret = callIteractor(iteratorFn, c);
+							for (var _i = 0; _i < ret.length; _i++) {
+								cdom = renderComponentChildren(ret[_i]);
+								ret[_i]._hostNode = cdom;
+								hostNode.appendChild(cdom);
+							}
+						}
+					}
 				case 'undefined':
 					break;
 			}
@@ -346,12 +349,28 @@ function transformChildren(children, parent) {
 		var __type = typeof c;
 		switch (__type) {
 			case 'object':
-				var _key = genKey(c);
-				if (!result[_key]) {
-					result[_key] = [c];
+				if (c.type) {
+					var _key = genKey(c);
+					if (!result[_key]) {
+						result[_key] = [c];
+					} else {
+						result[_key].push(c);
+					}
 				} else {
-					result[_key].push(c);
+					var iteratorFn = getIteractor(c);
+					if (iteratorFn) {
+						var ret = callIteractor(iteratorFn, c);
+						for (var _i = 0; _i < ret.length; _i++) {
+							var _key = genKey(ret[_i]);
+							if (!result[_key]) {
+								result[_key] = [ret[_i]];
+							} else {
+								result[_key].push(ret[_i]);
+							}
+						}
+					}
 				}
+
 				break;
 			case 'number':
 			case 'string':
@@ -434,7 +453,35 @@ function isSameType(prev, now) {
 	return prev.type === now.type && prev.key === now.key;
 }
 
+var REAL_SYMBOL = typeof Symbol === "function" && Symbol.iterator;
+var FAKE_SYMBOL = "@@iterator";
 
+function getIteractor(a) {
+	var iteratorFn = REAL_SYMBOL && a[REAL_SYMBOL] || a[FAKE_SYMBOL];
+	if (iteratorFn && iteratorFn.call) {
+		return iteratorFn;
+	}
+}
+
+function callIteractor(iteratorFn, children) {
+	var iterator = iteratorFn.call(children),
+		step,
+		ret = [];
+	if (iteratorFn !== children.entries) {
+		while (!(step = iterator.next()).done) {
+			ret.push(step.value);
+		}
+	} else {
+		//Map, Set
+		while (!(step = iterator.next()).done) {
+			var entry = step.value;
+			if (entry) {
+				ret.push(entry[1]);
+			}
+		}
+	}
+	return ret;
+}
 
 /**
  * //如果看不懂递归渲染节点  最好自己从根节点开始写 慢慢迭代 抽出公共方法

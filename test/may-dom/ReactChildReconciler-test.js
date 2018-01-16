@@ -12,22 +12,22 @@
 
 'use strict';
 
-// import React from '../../src/May';
-// import { render } from '../../src/MayDom'
-// var ReactDOM = {
-// 	render: render
-// }
+import React from '../../src/May';
+import { render } from '../../src/MayDom'
+var ReactDOM = {
+	render: render
+}
 
 // import React from "../../dist/ReactANU";
 // var ReactDOM = {
 // 	render: React.render
 // }
-var React = require('react');//hyphenate
-var ReactDOM = require('react-dom');
+// var React = require('react');//hyphenate
+// var ReactDOM = require('react-dom');
 
 var ReactTestUtils = {};
 ReactTestUtils.renderIntoDocument = function (component) {
-	var div = document.body;
+	var div = document.createElement('div');
 	ReactDOM.render(component, div);
 }
 
@@ -130,7 +130,7 @@ describe('ReactChildReconciler', () => {
         '    in Parent (at **)\n' +
         '    in GrandParent (at **)',
     );
-  });*/
+  });
 
   it('warns for duplicated iterable keys', () => {
     spyOn(console, 'error');
@@ -150,7 +150,7 @@ describe('ReactChildReconciler', () => {
         'duplicated and/or omitted — the behavior is unsupported and ' +
         'could change in a future version.',
     );
-  });
+  });*/
 
   /*it('warns for duplicated iterable keys with component stack info', () => {
     spyOn(console, 'error');
