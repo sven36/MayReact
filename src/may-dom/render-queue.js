@@ -1,13 +1,13 @@
 import { reRender } from '../MayDom'
-export var dirtyComponents=[];
+export var dirtyComponents = [];
 
-export function flushUpdates(queue) {
-    if(!queue){
-        queue=dirtyComponents;
-        var c;
-        while(c=dirtyComponents.pop()){
-            reRender(c);
-        }
+export function flushUpdates(callback) {
+    var c;
+    while (c = dirtyComponents.pop()) {
+        reRender(c);
     }
-    
+    if (callback) {
+        callback();
+    }
+
 }

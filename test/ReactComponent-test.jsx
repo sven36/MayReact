@@ -124,6 +124,7 @@ describe("ReactComponent", function () {
             </Wrapper>
         );
         expect(ReactTestUtils.scryRenderedDOMComponentsWithTag(instance, "p").length).toBe(1);
+        document.body.appendChild(instance);
     });
 
     /* it("should support refs on owned components", () => {

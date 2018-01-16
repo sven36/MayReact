@@ -161,11 +161,13 @@ export function reRender(component) {
 	var prevstate = component.state;
 	var prevRenderedVnode = component._renderedVnode;
 	var hostNode = prevRenderedVnode._hostNode;
-	var updateState = {};
-	for (var i = 0; i < component._mergeStateQueue.length; i++) {
-		updateState = extend(updateState, component._mergeStateQueue[i]);
+	if (component._mergeStateQueue) {
+		var updateState = {};
+		for (var i = 0; i < component._mergeStateQueue.length; i++) {
+			updateState = extend(updateState, component._mergeStateQueue[i]);
+		}
+		component.state = updateState;
 	}
-	component.state = updateState;
 	if (component.shouldComponentUpdate && component.shouldComponentUpdate(props, component.state, context) == false) {
 		return;
 	}
