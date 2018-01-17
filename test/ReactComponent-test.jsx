@@ -5,7 +5,6 @@ import {
     Component
 } from '../src/Component';
 import { render } from '../src/MayDom';
-import ReactTestUtils from '../lib/ReactTestUtils';
 var React = {
     createElement: createElement,
     Component: Component
@@ -13,9 +12,10 @@ var React = {
 var ReactDOM = {
     render: render
 }
+import ReactTestUtils from '../lib/ReactTestUtils';
 
 // import React from "../dist/ReactANU";
-
+// var ReactDOM = React;
 // var React = require('react');//hyphenate
 // var ReactDOM = require('react-dom');
 
@@ -102,7 +102,7 @@ describe("ReactComponent", function () {
             </Wrapper> 
         );
         expect(ReactTestUtils.scryRenderedDOMComponentsWithTag(instance, "p").length).toBe(1);
-    });*/
+    });
 
     it("should warn when children are mutated during update", () => {
         class Wrapper extends React.Component {
@@ -127,7 +127,7 @@ describe("ReactComponent", function () {
         document.body.appendChild(instance);
     });
 
-    /* it("should support refs on owned components", () => {
+     it("should support refs on owned components", () => {
         var innerObj = {};
         var outerObj = {};
  
@@ -143,6 +143,9 @@ describe("ReactComponent", function () {
  
         class Component extends React.Component {
             render() {
+                var m='sdt';
+                var t=`sdsa${m}`;
+                console.log(t);
                 var inner = <Wrapper object={innerObj} ref="inner" />;
                 var outer = (
                     <Wrapper object={outerObj} ref="outer">
@@ -161,7 +164,7 @@ describe("ReactComponent", function () {
         ReactTestUtils.renderIntoDocument(<Component />);
     });
  
-    it("should not have refs on unmounted components", () => {
+   it("should not have refs on unmounted components", () => {
         class Parent extends React.Component {
             render() {
                 return (
@@ -257,7 +260,7 @@ describe("ReactComponent", function () {
  
         ReactTestUtils.renderIntoDocument(<Component />);
         expect(mounted).toBe(true);
-    });
+    });*/
  
     it("should call refs at the correct time", () => {
         var log = [];
@@ -355,7 +358,7 @@ describe("ReactComponent", function () {
         ]);
     });
  
-    it("throws usefully when rendering badly-typed elements", () => {
+    /*it("throws usefully when rendering badly-typed elements", () => {
         spyOn(console, "error");
  
         var X = undefined;

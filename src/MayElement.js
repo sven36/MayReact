@@ -11,7 +11,7 @@ export function createElement(type, config, children) {
     var ref = null;
     var len = arguments.length - 2;
     if (config) {
-        key = config.key ? '' + config.key : null;
+        key = config.key !== void 0 ? ('' + config.key) : null;
         ref = config.ref || null;
         for (var i in config) {
             if (i !== 'key' && i != 'ref') {

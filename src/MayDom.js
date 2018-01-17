@@ -7,6 +7,11 @@ import {
 	removeDomAttr
 } from './util';
 
+import {
+	Refs,
+	RefsQueue
+} from './Refs';
+
 // import {
 // 	diff
 // } from './may-dom/diff';
@@ -44,6 +49,10 @@ var renderByMay = function (vnode, container, callback) {
 				//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
 				renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
 				renderedVnode._hostNode = rootDom;
+				var inst = vnode._inst || null;
+				if (inst && inst.componentDidMount) {
+					inst.componentDidMount();
+				}
 			} else if (typeof vnode.type === 'string') {
 				rootDom = renderComponentChildren(vnode);
 				vnode._hostNode = rootDom;
@@ -84,6 +93,11 @@ function renderComponentChildren(vnode) {
 		var _renderedVnode = buildComponentFromVnode(vnode);
 		hostNode = renderComponentChildren(_renderedVnode);
 		_renderedVnode._vChildren = transformChildren(_renderedVnode.props.children, hostNode);
+		_renderedVnode._hostNode = hostNode;
+		var inst = vnode._inst || null;
+		if (inst && inst.componentDidMount) {
+			inst.componentDidMount();
+		}
 	}
 	var cdom, c;
 	if (children) {
@@ -129,19 +143,19 @@ function buildComponentFromVnode(vnode) {
 	var key = vnode.key;
 	var ref = vnode.ref;
 	var context = vnode.context;
-	var component, renderedVnode;
+	var inst, renderedVnode;
 	var Ctor = vnode.type;
 	//Component  PureComponent
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
-		component = new Ctor(props, key, ref, context);
-		if (component.componentWillMount) component.componentWillMount();
+		inst = new Ctor(props, key, ref, context);
+		if (inst.componentWillMount) inst.componentWillMount();
 
-		renderedVnode = component.render(props, context);
+		renderedVnode = inst.render(props, context);
 		// vnode.type === 'function' 代表其为Component Component中才能setState
 		//setState会触发reRender 故保存有助于domDiff的参数
-		component._renderedVnode = renderedVnode;
-		if (component.componentDidMount) component.componentDidMount();
+		inst._renderedVnode = renderedVnode;
+		vnode._inst = inst;
 
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		renderedVnode = Ctor.call(vnode, props, context);
@@ -168,7 +182,7 @@ export function reRender(component) {
 		}
 		component.state = updateState;
 	}
-	if (component.shouldComponentUpdate && component.shouldComponentUpdate(props, component.state, context) == false) {
+	if (component.shouldComponentUpdate && component.shouldComponentUpdate(props, component.state, context) === false) {
 		return;
 	}
 	if (component.componentWillUpdate) {
@@ -180,13 +194,16 @@ export function reRender(component) {
 
 	mayDiff(prevRenderedVnode, updatedVnode, hostNode);
 
+	if (component.componentDidUpdate) {
+		component.componentDidUpdate(props, component.state, context);
+	}
 }
 
 function mayDiff(prevVnode, updatedVnode, parent) {
-	var childList = [].slice.call(parent.childNodes);
-	var prevChildren = prevVnode._vChildren || null;
+	// var childList = [].slice.call(parent.childNodes);
 	// var newChildren = transformChildren(updatedVnode.props.children);
 	// updatedVnode._vChildren = newChildren;
+	var prevChildren = prevVnode._vChildren || null;
 	var newRenderedChild = updatedVnode.props.children;
 	//diff之前 遍历prevchildren 与newChildren 如有相同key的只对其props diff
 	var _mountChildren = [];
@@ -220,7 +237,7 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 		if (prevK && prevK.length > 0) { //试试=0 else
 			for (var _i = 0; _i < prevK.length; _i++) {
 				var vnode = prevK[_i];
-				if (!vnode._reused) {
+				if (c.type === vnode.type && !vnode._reused) {
 					c._hostNode = vnode._hostNode;
 					c._prevVnode = vnode;
 					vnode._reused = true;
@@ -245,10 +262,10 @@ function mayDiff(prevVnode, updatedVnode, parent) {
 }
 
 function flushMounts(newChildren, parent) {
-	var childList = [].slice.call(parent.childNodes);
-	var len = childList.length;
+	// var childList = [].slice.call(parent.childNodes);
+	// var len = childList.length;
 	//如果添加节点之后 children len 会增长 insertCount+1 让其插入位置正确
-	var insertCount = 0;
+	// var insertCount = 0;
 	for (var _i = 0; _i < newChildren.length; _i++) {
 		var child = newChildren[_i];
 		var type = typeof child.type;
@@ -273,6 +290,7 @@ function flushMounts(newChildren, parent) {
 				} else {
 					newDom = renderComponentChildren(renderedVnode);
 					renderedVnode._vChildren = transformChildren(renderedVnode.props.children, newDom);
+					renderedVnode._hostNode = newDom;
 					var node = parent.childNodes[_i];
 					if (node) {
 						parent.insertBefore(newDom, node);
@@ -282,30 +300,15 @@ function flushMounts(newChildren, parent) {
 					}
 				}
 
-				// if (isSameType(prevChildren[_i], newChildren[_i])) {
-				// 	diffProps(prevChildren[_i], newChildren[_i]);
-				// } else {
-				// 	var _type = typeof child.type;
-				// 	switch (_type) {
-				// 		case 'string':
-				// 			newDom = document.createElement(_type);
-				// 			renderComponentChildren(child, newDom)
-				// 			break;
-				// 	}
-				// 	disposeVnode(prevChildren[_i]);
-				// 	disposeDom(childNodes[_i]);
-				// 	parent.replaceChild(newDom, childNodes[_i]);
-				// }
 				break;
 			case 'string':
 				if (child.type !== '#text') {
 					if (child._reused) {
-						var node = parent.childNodes[_i];
-						if (node && node.nodeName.toLowerCase() !== child.type) {
-							newDom = parent.removeChild(child._hostNode);
-							parent.insertBefore(newDom, parent.childNodes[_i])
-						}
 						diffProps(child._prevVnode, child);
+					} else {
+						newDom = renderComponentChildren(child);
+						child._hostNode = newDom;
+						parent.insertBefore(newDom, parent.childNodes[_i]);
 					}
 				} else {
 					if (child._reused) {
@@ -410,6 +413,7 @@ function disposeVnode(vnode) {
 			vnode._renderedVnode.component = null;
 		}
 		vnode._renderedVnode = null;
+		vnode._inst = null;
 		vnode = null;
 	}
 }
@@ -454,6 +458,10 @@ function genKey(child) {
 function isSameType(prev, now) {
 	return prev.type === now.type && prev.key === now.key;
 }
+export function unmountComponentAtNode(dom) {
+	
+}
+
 
 var REAL_SYMBOL = typeof Symbol === "function" && Symbol.iterator;
 var FAKE_SYMBOL = "@@iterator";
