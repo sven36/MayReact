@@ -38,6 +38,7 @@ var renderByMay = function (vnode, container, callback) {
 		container._lastVnode = vnode;
 	} else {
 		if (vnode && vnode.type) {
+			rootDom = mountStrategy[vnode.mtype](vnode);
 			if (typeof vnode.type === 'function') {
 				renderedVnode = buildComponentFromVnode(vnode);
 
@@ -74,6 +75,26 @@ var renderByMay = function (vnode, container, callback) {
 
 function _createElement(type, isSvg) {
 	return !isSvg ? document.createElement(type) : document.createElementNS("http://www.w3.org/2000/svg", type);
+}
+function mountDOM(vnode, isSvg) {
+	var ret;
+	ret = renderComponentChildren(vnode);
+	vnode._hostNode = ret;
+	return ret;
+}
+function mountComponent(vnode) {
+	var ret;
+	return ret;
+}
+function mountSVG(vnode) {
+	return mountDOM(vnode, true);
+}
+//mountDOM vnode.type为string直接createElement 然后render children即可
+//mountComponent vnode.type为function 需实例化component 再render children
+var mountStrategy = {
+	1: mountDOM,
+	2: mountComponent,
+	2: mountSVG,
 }
 
 
@@ -459,7 +480,7 @@ function isSameType(prev, now) {
 	return prev.type === now.type && prev.key === now.key;
 }
 export function unmountComponentAtNode(dom) {
-	
+
 }
 
 
