@@ -38,26 +38,11 @@ var renderByMay = function (vnode, container, callback) {
 		container._lastVnode = vnode;
 	} else {
 		if (vnode && vnode.type) {
-			rootDom = mountStrategy[vnode.mtype](vnode);
-			if (typeof vnode.type === 'function') {
-				renderedVnode = buildComponentFromVnode(vnode);
-
-				//为什么React使用var markup=renderChilden();这样的形式呢; 2018-1-13
-				//因为如果按renderComponentChildren(renderedVnode, rootDom, _isSvg);传入container这种
-				//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
-				rootDom = renderComponentChildren(renderedVnode);
-
-				//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
-				renderedVnode._vChildren = transformChildren(renderedVnode.props.children, rootDom);
-				renderedVnode._hostNode = rootDom;
-				var inst = vnode._inst || null;
-				if (inst && inst.componentDidMount) {
-					inst.componentDidMount();
-				}
-			} else if (typeof vnode.type === 'string') {
-				rootDom = renderComponentChildren(vnode);
-				vnode._hostNode = rootDom;
-			}
+			//为什么React使用var markup=renderChilden();这样的形式呢; 2018-1-13
+			//因为如果按renderComponentChildren(renderedVnode, rootDom, _isSvg);传入container这种
+			//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
+			var isSVG = vnode.mtype === 3;
+			rootDom = mountComponent(vnode, isSVG);
 		} else {
 			console.error('render参数错误');
 			return;
@@ -73,53 +58,37 @@ var renderByMay = function (vnode, container, callback) {
 
 }
 
-function _createElement(type, isSvg) {
-	return !isSvg ? document.createElement(type) : document.createElementNS("http://www.w3.org/2000/svg", type);
+function mountDOM(vnode, isSVG) {
+	var hostNode = !isSVG ? document.createElement(vnode.type) : document.createElementNS("http://www.w3.org/2000/svg", vnode.type);
+	setDomAttr(hostNode, props);
+	vnode._hostNode = hostNode;
+	return hostNode;
 }
-function mountDOM(vnode, isSvg) {
-	var ret;
-	ret = renderComponentChildren(vnode);
-	vnode._hostNode = ret;
-	return ret;
+
+function mountComposite(vnode, isSVG) {
+	var renderedVnode = buildComponentFromVnode(vnode);
+	//递归遍历 深度优先
+	var hostNode = mountComponent(renderedVnode, isSVG);
+	//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
+	renderedVnode._vChildren = transformChildren(renderedVnode.props.children, hostNode);
+	renderedVnode._hostNode = hostNode;
+	return hostNode;
 }
-function mountComponent(vnode) {
-	var ret;
-	return ret;
-}
-function mountSVG(vnode) {
-	return mountDOM(vnode, true);
-}
+
 //mountDOM vnode.type为string直接createElement 然后render children即可
-//mountComponent vnode.type为function 需实例化component 再render children
+//mountComposite vnode.type为function 需实例化component 再render children
 var mountStrategy = {
 	1: mountDOM,
-	2: mountComponent,
-	2: mountSVG,
+	2: mountComposite,
+	3: mountDOM,
 }
 
 
 
-function renderComponentChildren(vnode) {
-	var _type = vnode.type;
-	var isSvg = _type === 'svg';
-	var isComponent = typeof _type === 'function';
-	var hostNode = null;
-
-	var children = vnode.props.children || undefined;
+function mountComponent(vnode, isSVG) {
+	var hostNode = mountStrategy[vnode.mtype](vnode, isSVG);
+	var children = vnode.props.children || null;
 	var props = vnode.props;
-	if (!isComponent) {
-		hostNode = _createElement(_type, isSvg);
-		setDomAttr(hostNode, props);
-	} else { //component.type 仍为function
-		var _renderedVnode = buildComponentFromVnode(vnode);
-		hostNode = renderComponentChildren(_renderedVnode);
-		_renderedVnode._vChildren = transformChildren(_renderedVnode.props.children, hostNode);
-		_renderedVnode._hostNode = hostNode;
-		var inst = vnode._inst || null;
-		if (inst && inst.componentDidMount) {
-			inst.componentDidMount();
-		}
-	}
 	var cdom, c;
 	if (children) {
 		var len = children.length;
@@ -137,7 +106,7 @@ function renderComponentChildren(vnode) {
 					break;
 				case 'object': //vnode
 					if (c.type) {
-						cdom = renderComponentChildren(c);
+						cdom = mountComponent(c, isSVG);
 						c._hostNode = cdom;
 						hostNode.appendChild(cdom);
 					} else { //有可能是子数组iterator
@@ -145,16 +114,18 @@ function renderComponentChildren(vnode) {
 						if (iteratorFn) {
 							var ret = callIteractor(iteratorFn, c);
 							for (var _i = 0; _i < ret.length; _i++) {
-								cdom = renderComponentChildren(ret[_i]);
+								cdom = mountComponent(ret[_i], isSVG);
 								ret[_i]._hostNode = cdom;
 								hostNode.appendChild(cdom);
 							}
 						}
 					}
-				case 'undefined':
-					break;
 			}
 		}
+	}
+	var inst = vnode._inst || null;
+	if (inst && inst.componentDidMount) {
+		inst.componentDidMount();
 	}
 	return hostNode;
 }
@@ -309,7 +280,7 @@ function flushMounts(newChildren, parent) {
 						parent.appendChild(newDom);
 					}
 				} else {
-					newDom = renderComponentChildren(renderedVnode);
+					newDom = mountComponent(renderedVnode);
 					renderedVnode._vChildren = transformChildren(renderedVnode.props.children, newDom);
 					renderedVnode._hostNode = newDom;
 					var node = parent.childNodes[_i];
@@ -327,7 +298,7 @@ function flushMounts(newChildren, parent) {
 					if (child._reused) {
 						diffProps(child._prevVnode, child);
 					} else {
-						newDom = renderComponentChildren(child);
+						newDom = mountComponent(child);
 						child._hostNode = newDom;
 						parent.insertBefore(newDom, parent.childNodes[_i]);
 					}

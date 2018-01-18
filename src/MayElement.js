@@ -15,10 +15,10 @@ export function createElement(type, config, children) {
     //那把这一步提前 比render循环里判断更好些;
     var _type = typeof type;
     switch (_type) {
-        case 'string'://HtmlElement 1  SVG 3
+        case 'string': //HtmlElement 1  SVG 3
             mtype = _type !== 'svg' ? 1 : 3;
             break;
-        case 'function'://component 或functionless
+        case 'function': //component 或functionless
             mtype = 2;
             break;
     }
@@ -46,6 +46,7 @@ export function createElement(type, config, children) {
             props.children = children;
         }
     }
+
     return new Vnode(type, key, ref, props, mtype);
 }
 
