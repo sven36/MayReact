@@ -60,7 +60,7 @@ var renderByMay = function (vnode, container, callback) {
 
 function mountDOM(vnode, isSVG) {
 	var hostNode = !isSVG ? document.createElement(vnode.type) : document.createElementNS("http://www.w3.org/2000/svg", vnode.type);
-	setDomAttr(hostNode, props);
+	setDomAttr(hostNode, vnode.props);
 	vnode._hostNode = hostNode;
 	return hostNode;
 }
@@ -157,9 +157,9 @@ function buildComponentFromVnode(vnode) {
 	return renderedVnode;
 }
 
-function doRender() {
-	return this.constructor.apply(this, arguments);
-}
+// function doRender() {
+// 	return this.constructor.apply(this, arguments);
+// }
 
 export function reRender(component) {
 	var props = component.props;
@@ -451,7 +451,19 @@ function isSameType(prev, now) {
 	return prev.type === now.type && prev.key === now.key;
 }
 export function unmountComponentAtNode(dom) {
-
+	var lastVnode = dom._lastVnode;
+	if (lastVnode) {
+		disposeVnode(lastVnode);
+		emptyElement(dom);
+		dom._lastVnode = null;
+	}
+}
+function emptyElement(dom) {
+	var c;
+	while (c = dom.firstChild) {
+		emptyElement(c);
+		dom.removeChild(c);
+	}
 }
 
 

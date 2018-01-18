@@ -4,13 +4,14 @@ import {
 import {
     Component
 } from '../src/Component';
-import { render } from '../src/MayDom';
+import { render, unmountComponentAtNode } from '../src/MayDom';
 var React = {
     createElement: createElement,
     Component: Component
 }
 var ReactDOM = {
-    render: render
+    render: render,
+    unmountComponentAtNode: unmountComponentAtNode
 }
 import ReactTestUtils from '../lib/ReactTestUtils';
 
@@ -261,29 +262,29 @@ describe("ReactComponent", function () {
         ReactTestUtils.renderIntoDocument(<Component />);
         expect(mounted).toBe(true);
     });*/
- 
+
     it("should call refs at the correct time", () => {
         var log = [];
- 
+
         class Inner extends React.Component {
             render() {
                 log.push(`inner ${this.props.id} render`);
                 return <div />;
             }
- 
+
             componentDidMount() {
                 log.push(`inner ${this.props.id} componentDidMount`);
             }
- 
+
             componentDidUpdate() {
                 log.push(`inner ${this.props.id} componentDidUpdate`);
             }
- 
+
             componentWillUnmount() {
                 log.push(`inner ${this.props.id} componentWillUnmount`);
             }
         }
- 
+
         class Outer extends React.Component {
             render() {
                 return (
@@ -303,20 +304,20 @@ describe("ReactComponent", function () {
                     </div>
                 );
             }
- 
+
             componentDidMount() {
                 log.push("outer componentDidMount");
             }
- 
+
             componentDidUpdate() {
                 log.push("outer componentDidUpdate");
             }
- 
+
             componentWillUnmount() {
                 log.push("outer componentWillUnmount");
             }
         }
- 
+
         // mount, update, unmount
         var container = document.createElement("div");
         log.push("start mount");
@@ -325,8 +326,8 @@ describe("ReactComponent", function () {
         ReactDOM.render(<Outer />, container);
         log.push("start unmount");
         ReactDOM.unmountComponentAtNode(container);
- 
-         //eslint-disable indent 
+
+        //eslint-disable indent 
         expect(log).toEqual([
             "start mount",
             "inner 1 render",
@@ -337,13 +338,13 @@ describe("ReactComponent", function () {
             "ref 2 got instance 2",
             "outer componentDidMount",
             "start update",
- 
+
             // Stack resets refs before rendering
             "ref 1 got null",
             "inner 1 render",
             "ref 2 got null",
             "inner 2 render",
- 
+
             "inner 1 componentDidUpdate",
             "ref 1 got instance 1",
             "inner 2 componentDidUpdate",
@@ -357,7 +358,7 @@ describe("ReactComponent", function () {
             "inner 2 componentWillUnmount"
         ]);
     });
- 
+
     /*it("throws usefully when rendering badly-typed elements", () => {
         spyOn(console, "error");
  
