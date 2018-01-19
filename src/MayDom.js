@@ -32,9 +32,9 @@ export function render(vnode, container, merge) {
 var renderByMay = function (vnode, container, callback) {
 	var renderedVnode, rootDom;
 	var lastVnode = container._lastVnode || null;
-	if (lastVnode) { //针对两次render
-		vnode._hostNode = lastVnode._hostNode || null;
-		diffProps(lastVnode, vnode)
+	if (lastVnode) { //update
+		mayUpdate(lastVnode, vnode, container);
+		// diffProps(lastVnode, vnode)
 		container._lastVnode = vnode;
 	} else {
 		if (vnode && vnode.type) {
@@ -50,6 +50,11 @@ var renderByMay = function (vnode, container, callback) {
 		if (container && container.appendChild && rootDom) {
 			container._lastVnode = vnode;
 			container.appendChild(rootDom);
+			var q;
+			while (q = lifeCycleQueue.shift()) {
+				q();
+			}
+
 			return container;
 		} else {
 			throw new Error('container参数错误');
@@ -82,10 +87,12 @@ var mountStrategy = {
 	2: mountComposite,
 	3: mountDOM,
 }
-
+var lifeCycleQueue = [];
 
 
 function mountComponent(vnode, isSVG) {
+	//React是根据type类型分成不同的Component各自具备各自的mount与update方法
+	//我们这里简化成根据type类型调用不同的方法
 	var hostNode = mountStrategy[vnode.mtype](vnode, isSVG);
 	var children = vnode.props.children || null;
 	var props = vnode.props;
@@ -125,7 +132,13 @@ function mountComponent(vnode, isSVG) {
 	}
 	var inst = vnode._inst || null;
 	if (inst && inst.componentDidMount) {
-		inst.componentDidMount();
+		lifeCycleQueue.push(inst.componentDidMount.bind(inst));
+		// inst.componentDidMount();
+	}
+	if (vnode.ref) {
+		if (typeof vnode.ref === 'function') {
+			lifeCycleQueue.push(vnode.ref.bind(vnode, vnode));
+		}
 	}
 	return hostNode;
 }
@@ -146,7 +159,6 @@ function buildComponentFromVnode(vnode) {
 		renderedVnode = inst.render(props, context);
 		// vnode.type === 'function' 代表其为Component Component中才能setState
 		//setState会触发reRender 故保存有助于domDiff的参数
-		inst._renderedVnode = renderedVnode;
 		vnode._inst = inst;
 
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
@@ -184,14 +196,27 @@ export function reRender(component) {
 	var updatedVnode = component.render(props, context);
 	component._renderedVnode = updatedVnode;
 
-	mayDiff(prevRenderedVnode, updatedVnode, hostNode);
+	diffChildren(prevRenderedVnode, updatedVnode, hostNode);
 
 	if (component.componentDidUpdate) {
 		component.componentDidUpdate(props, component.state, context);
 	}
 }
 
-function mayDiff(prevVnode, updatedVnode, parent) {
+function mayUpdate(prevVnode, newVnode, container) {
+	var isSVG = newVnode.mtype === 3;
+	var hostNode = prevVnode._renderedVnode._hostNode;
+	if (prevVnode.type === newVnode.type) {
+
+	} else {
+		var dom = mountComponent(vnode, isSVG);
+		container.replaceChild(dom, hostNode);
+		disposeVnode(prevVnode);
+		disposeDom(hostNode);
+	}
+}
+
+function diffChildren(prevVnode, updatedVnode, parent) {
 	// var childList = [].slice.call(parent.childNodes);
 	// var newChildren = transformChildren(updatedVnode.props.children);
 	// updatedVnode._vChildren = newChildren;
@@ -401,10 +426,10 @@ function transformChildren(children, parent) {
 
 function disposeVnode(vnode) {
 	if (vnode._renderedVnode) {
-		if (vnode._renderedVnode.component) {
-			vnode._renderedVnode.component = null;
-		}
 		vnode._renderedVnode = null;
+		if (vnode._inst && vnode._inst.componentWillUnmount) {
+			vnode._inst.componentWillUnmount();
+		}
 		vnode._inst = null;
 		vnode = null;
 	}
@@ -439,7 +464,7 @@ function diffProps(prev, now) {
 	}
 
 	if (props['children']) {
-		mayDiff(prev, now, now._hostNode);
+		diffChildren(prev, now, now._hostNode);
 	}
 }
 
@@ -458,6 +483,7 @@ export function unmountComponentAtNode(dom) {
 		dom._lastVnode = null;
 	}
 }
+
 function emptyElement(dom) {
 	var c;
 	while (c = dom.firstChild) {
