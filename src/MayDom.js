@@ -207,7 +207,17 @@ function mayUpdate(prevVnode, newVnode, container) {
 	var isSVG = newVnode.mtype === 3;
 	var hostNode = prevVnode._renderedVnode._hostNode;
 	if (prevVnode.type === newVnode.type) {
-
+		if (!newVnode.props.children) {
+			disposeVnode(prevVnode);
+			disposeDom(hostNode);
+		}
+		if (!prevVnode.props.children) {
+			var dom = mountComponent(vnode, isSVG);
+			container.replaceChild(dom, hostNode);
+			disposeVnode(prevVnode);
+			disposeDom(hostNode);
+		}
+		
 	} else {
 		var dom = mountComponent(vnode, isSVG);
 		container.replaceChild(dom, hostNode);
@@ -426,10 +436,10 @@ function transformChildren(children, parent) {
 
 function disposeVnode(vnode) {
 	if (vnode._renderedVnode) {
-		vnode._renderedVnode = null;
 		if (vnode._inst && vnode._inst.componentWillUnmount) {
 			vnode._inst.componentWillUnmount();
 		}
+		vnode._renderedVnode = null;
 		vnode._inst = null;
 		vnode = null;
 	}
