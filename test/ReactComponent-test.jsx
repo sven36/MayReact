@@ -126,7 +126,7 @@ describe("ReactComponent", function () {
         );
         expect(ReactTestUtils.scryRenderedDOMComponentsWithTag(instance, "p").length).toBe(1);
         document.body.appendChild(instance);
-    });
+    });*/
 
      it("should support refs on owned components", () => {
         var innerObj = {};
@@ -144,9 +144,6 @@ describe("ReactComponent", function () {
  
         class Component extends React.Component {
             render() {
-                var m='sdt';
-                var t=`sdsa${m}`;
-                console.log(t);
                 var inner = <Wrapper object={innerObj} ref="inner" />;
                 var outer = (
                     <Wrapper object={outerObj} ref="outer">
@@ -165,7 +162,7 @@ describe("ReactComponent", function () {
         ReactTestUtils.renderIntoDocument(<Component />);
     });
  
-   it("should not have refs on unmounted components", () => {
+   /*it("should not have refs on unmounted components", () => {
         class Parent extends React.Component {
             render() {
                 return (
@@ -290,7 +287,7 @@ describe("ReactComponent", function () {
  * -----------------------------------------------------------------------------
  */
 
-    it("should call refs at the correct time", () => {
+    /*it("should call refs at the correct time", () => {
         var log = [];
 
         class Inner extends React.Component {
@@ -384,7 +381,7 @@ describe("ReactComponent", function () {
             "ref 2 got null",
             "inner 2 componentWillUnmount"
         ]);
-    });
+    });*/
 
     /*it("throws usefully when rendering badly-typed elements", () => {
         spyOn(console, "error");

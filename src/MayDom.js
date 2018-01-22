@@ -36,6 +36,10 @@ var renderByMay = function (vnode, container, callback) {
 		mayUpdate(lastVnode, vnode, container);
 		// diffProps(lastVnode, vnode)
 		container._lastVnode = vnode;
+		var hook;
+		while (hook = lifeCycleQueue.shift()) {
+			hook();
+		}
 	} else {
 		if (vnode && vnode.type) {
 			//为什么React使用var markup=renderChilden();这样的形式呢; 2018-1-13
@@ -72,6 +76,13 @@ function mountDOM(vnode, isSVG) {
 
 function mountComposite(vnode, isSVG) {
 	var renderedVnode = buildComponentFromVnode(vnode);
+	if (renderedVnode.ref) {
+		//子节点 有ref 需要添加一个owner属性 (ref为string) owner的this.refs.refName 指向对应component
+		var instance = vnode._inst;
+		if (!Refs.currentOwner) {
+			Refs.currentOwner = instance;
+		}
+	}
 	//递归遍历 深度优先
 	var hostNode = mountComponent(renderedVnode, isSVG);
 	//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
@@ -86,6 +97,9 @@ var mountStrategy = {
 	1: mountDOM,
 	2: mountComposite,
 	3: mountDOM,
+	4: updateDOM,
+	5: updateComposite,
+	6: updateDOM,
 }
 var lifeCycleQueue = [];
 
@@ -138,6 +152,8 @@ function mountComponent(vnode, isSVG) {
 	if (vnode.ref) {
 		if (typeof vnode.ref === 'function') {
 			lifeCycleQueue.push(vnode.ref.bind(vnode, vnode));
+		} else { //ref 为string
+
 		}
 	}
 	return hostNode;
@@ -203,23 +219,47 @@ export function reRender(component) {
 	}
 }
 
+function updateDOM(params) {
+
+}
+
+function updateComposite(prevVnode, newVnode, container) {
+	var hostNode = prevVnode._renderedVnode._hostNode;
+	var instance = prevVnode._inst;
+	var prevRenderedVnode = prevVnode._renderedVnode;
+	var newRenderedVnode = instance.render();
+	newVnode._renderedVnode = newRenderedVnode;
+	newVnode._inst = instance;
+	if (instance.componentWillUpdate) {
+		instance.componentWillUpdate();
+	}
+
+	diffChildren(prevRenderedVnode, newRenderedVnode, hostNode);
+	if (instance.componentDidUpdate) {
+		lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
+	}
+}
+
 function mayUpdate(prevVnode, newVnode, container) {
 	var isSVG = newVnode.mtype === 3;
 	var hostNode = prevVnode._renderedVnode._hostNode;
+	var dom;
 	if (prevVnode.type === newVnode.type) {
-		if (!newVnode.props.children) {
-			disposeVnode(prevVnode);
-			disposeDom(hostNode);
-		}
-		if (!prevVnode.props.children) {
-			var dom = mountComponent(vnode, isSVG);
-			container.replaceChild(dom, hostNode);
-			disposeVnode(prevVnode);
-			disposeDom(hostNode);
-		}
-		
+		dom = mountStrategy[newVnode.mtype + 3](prevVnode, newVnode, container);
+
+		// if (!newVnode.props.children) {
+		// 	disposeVnode(prevVnode);
+		// 	disposeDom(hostNode);
+		// }
+		// if (!prevVnode.props.children) {
+		// 	var dom = mountComponent(vnode, isSVG);
+		// 	container.replaceChild(dom, hostNode);
+		// 	disposeVnode(prevVnode);
+		// 	disposeDom(hostNode);
+		// }
+
 	} else {
-		var dom = mountComponent(vnode, isSVG);
+		dom = mountComponent(vnode, isSVG);
 		container.replaceChild(dom, hostNode);
 		disposeVnode(prevVnode);
 		disposeDom(hostNode);
@@ -227,9 +267,6 @@ function mayUpdate(prevVnode, newVnode, container) {
 }
 
 function diffChildren(prevVnode, updatedVnode, parent) {
-	// var childList = [].slice.call(parent.childNodes);
-	// var newChildren = transformChildren(updatedVnode.props.children);
-	// updatedVnode._vChildren = newChildren;
 	var prevChildren = prevVnode._vChildren || null;
 	var newRenderedChild = updatedVnode.props.children;
 	//diff之前 遍历prevchildren 与newChildren 如有相同key的只对其props diff
@@ -266,6 +303,7 @@ function diffChildren(prevVnode, updatedVnode, parent) {
 				var vnode = prevK[_i];
 				if (c.type === vnode.type && !vnode._reused) {
 					c._hostNode = vnode._hostNode;
+					c._inst = vnode._inst;
 					c._prevVnode = vnode;
 					vnode._reused = true;
 					c._reused = true;
@@ -289,19 +327,27 @@ function diffChildren(prevVnode, updatedVnode, parent) {
 }
 
 function flushMounts(newChildren, parent) {
-	// var childList = [].slice.call(parent.childNodes);
-	// var len = childList.length;
-	//如果添加节点之后 children len 会增长 insertCount+1 让其插入位置正确
-	// var insertCount = 0;
+
 	for (var _i = 0; _i < newChildren.length; _i++) {
 		var child = newChildren[_i];
 		var type = typeof child.type;
 		var newDom;
 		switch (type) {
 			case 'function':
-				var renderedVnode = buildComponentFromVnode(child);
 				//如果能复用之前节点
 				if (child._reused) {
+					var instance = child._inst;
+					if (child.ref) {
+						child.ref(null);
+					}
+					if (instance.componentWillReceiProps) {
+						instance.componentWillReceiProps();
+					}
+					if (instance.componentWillUpdate) {
+						instance.componentWillUpdate();
+					}
+					var renderedVnode = instance.render();
+					child._renderedVnode = renderedVnode;
 					var node = parent.childNodes[_i];
 					renderedVnode._hostNode = child._hostNode;
 					diffProps(child._prevVnode._renderedVnode, renderedVnode);
@@ -314,7 +360,14 @@ function flushMounts(newChildren, parent) {
 						newDom = child._hostNode;
 						parent.appendChild(newDom);
 					}
+					if (instance.componentDidUpdate) {
+						lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
+					}
+					if (child.ref) {
+						lifeCycleQueue.push(child.ref.bind(child, child));
+					}
 				} else {
+					var renderedVnode = buildComponentFromVnode(child);
 					newDom = mountComponent(renderedVnode);
 					renderedVnode._vChildren = transformChildren(renderedVnode.props.children, newDom);
 					renderedVnode._hostNode = newDom;
@@ -435,14 +488,27 @@ function transformChildren(children, parent) {
 }
 
 function disposeVnode(vnode) {
-	if (vnode._renderedVnode) {
-		if (vnode._inst && vnode._inst.componentWillUnmount) {
+	var instance = vnode._inst;
+	if (instance) {
+		if (vnode.ref) {
+			vnode.ref(null);
+			vnode.ref = null;
+		}
+		if (vnode._inst.componentWillUnmount) {
 			vnode._inst.componentWillUnmount();
 		}
-		vnode._renderedVnode = null;
-		vnode._inst = null;
-		vnode = null;
+		var children = vnode._renderedVnode.props.children;
+		if (children) {
+			for (var i = 0; i < children.length; i++) {
+				var c = children[i];
+				disposeVnode(c);
+			}
+		}
 	}
+	vnode._prevVnode = null;
+	vnode._renderedVnode = null;
+	vnode._inst = null;
+	vnode = null;
 }
 
 function disposeDom(dom) {
