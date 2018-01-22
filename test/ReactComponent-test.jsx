@@ -4,17 +4,18 @@ import {
 import {
     Component
 } from '../src/Component';
-import { render, unmountComponentAtNode } from '../src/MayDom';
+import { render, unmountComponentAtNode, findDOMNode } from '../src/MayDom';
 var React = {
     createElement: createElement,
     Component: Component
 }
 var ReactDOM = {
     render: render,
-    unmountComponentAtNode: unmountComponentAtNode
+    unmountComponentAtNode: unmountComponentAtNode,
+    findDOMNode: findDOMNode
 }
 import ReactTestUtils from '../lib/ReactTestUtils';
-
+import ReactDOMServer from '../src/may-server/MayServer'
 // import React from "../dist/ReactANU";
 // var ReactDOM = React;
 // var React = require('react');//hyphenate
@@ -126,7 +127,7 @@ describe("ReactComponent", function () {
         );
         expect(ReactTestUtils.scryRenderedDOMComponentsWithTag(instance, "p").length).toBe(1);
         document.body.appendChild(instance);
-    });*/
+    });
 
      it("should support refs on owned components", () => {
         var innerObj = {};
@@ -161,8 +162,8 @@ describe("ReactComponent", function () {
  
         ReactTestUtils.renderIntoDocument(<Component />);
     });
- 
-   /*it("should not have refs on unmounted components", () => {
+
+    it("should not have refs on unmounted components", () => {
         class Parent extends React.Component {
             render() {
                 return (
@@ -171,21 +172,21 @@ describe("ReactComponent", function () {
                     </Child>
                 );
             }
- 
+
             componentDidMount() {
                 expect(this.refs && this.refs.test).toEqual(undefined);
             }
         }
- 
+
         class Child extends React.Component {
             render() {
                 return <div />;
             }
         }
- 
+
         ReactTestUtils.renderIntoDocument(<Parent child={<span />} />);
     });
- 
+
     it("should support new-style refs", () => {
         var innerObj = {};
         var outerObj = {};
@@ -223,31 +224,31 @@ describe("ReactComponent", function () {
         ReactTestUtils.renderIntoDocument(<Component />);
         expect(mounted).toBe(true);
     });
- 
+
     it("should support new-style refs with mixed-up owners", () => {
         class Wrapper extends React.Component {
             getTitle = () => {
                 return this.props.title;
             };
- 
+
             render() {
                 return this.props.getContent();
             }
         }
- 
+
         var mounted = false;
- 
+
         class Component extends React.Component {
             getInner = () => {
                 // (With old-style refs, it's impossible to get a ref to this div
                 // because Wrapper is the current owner when this function is called.)
                 return <div className="inner" ref={c => (this.innerRef = c)} />;
             };
- 
+
             render() {
                 return <Wrapper title="wrapper" ref={c => (this.wrapperRef = c)} getContent={this.getInner} />;
             }
- 
+
             componentDidMount() {
                 // Check .props.title to make sure we got the right elements back
                 expect(this.wrapperRef.getTitle()).toBe("wrapper");
@@ -255,7 +256,7 @@ describe("ReactComponent", function () {
                 mounted = true;
             }
         }
- 
+
         ReactTestUtils.renderIntoDocument(<Component />);
         expect(mounted).toBe(true);
     });*/
@@ -381,9 +382,9 @@ describe("ReactComponent", function () {
             "ref 2 got null",
             "inner 2 componentWillUnmount"
         ]);
-    });*/
+    });
 
-    /*it("throws usefully when rendering badly-typed elements", () => {
+    it("throws usefully when rendering badly-typed elements", () => {
         spyOn(console, "error");
  
         var X = undefined;
@@ -470,9 +471,9 @@ describe("ReactComponent", function () {
             ex = e;
         }
         expect(ex).toBeDefined();
-    });
+    });*/
  
-    it("throws if a plain object is used as a child when using SSR", async () => {
+    /*it("throws if a plain object is used as a child when using SSR", async () => {
         var children = {
             x: <span />,
             y: <span />,

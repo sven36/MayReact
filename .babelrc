@@ -2,11 +2,19 @@
      "presets": [
          ["env",{ "modules": false }],"react","stage-1"
      ]
-    //  "plugins": [
+    //  "plugins": [,
+    //     ["transform-runtime", {
+    //         "helpers": true,
+    //         "polyfill": true,
+    //         "regenerator": true,
+    //         "moduleName": "babel-runtime"
+    //     }]
+    //   ]
+ }
+     //  "plugins": [
     //      [  "transform-class-properties",
     //          "transform-es2015-classes", {
     //              "loose": true
     //          }
     //      ]
     //  ]
- }

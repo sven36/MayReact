@@ -78,10 +78,13 @@ function mountComposite(vnode, isSVG) {
 	var renderedVnode = buildComponentFromVnode(vnode);
 	if (renderedVnode.ref) {
 		//子节点 有ref 需要添加一个owner属性 (ref为string) owner的this.refs.refName 指向对应component
-		var instance = vnode._inst;
 		if (!Refs.currentOwner) {
-			Refs.currentOwner = instance;
+			Refs.currentOwner = vnode._inst;
+			vnode._inst.refs = {};
 		}
+		// if (typeof renderedVnode.ref === 'function') {
+
+		// }
 	}
 	//递归遍历 深度优先
 	var hostNode = mountComponent(renderedVnode, isSVG);
@@ -150,10 +153,13 @@ function mountComponent(vnode, isSVG) {
 		// inst.componentDidMount();
 	}
 	if (vnode.ref) {
-		if (typeof vnode.ref === 'function') {
-			lifeCycleQueue.push(vnode.ref.bind(vnode, vnode));
-		} else { //ref 为string
-
+		var ref = vnode.ref;
+		var owner = Refs.currentOwner;
+		var refInst = vnode._inst || vnode._hostNode;
+		if (typeof ref === 'function') {
+			lifeCycleQueue.push(ref.bind(owner, refInst));
+		} else if (typeof ref === 'string') { //ref 为string
+			owner.refs[ref] = refInst;
 		}
 	}
 	return hostNode;
@@ -557,6 +563,17 @@ export function unmountComponentAtNode(dom) {
 		disposeVnode(lastVnode);
 		emptyElement(dom);
 		dom._lastVnode = null;
+	}
+}
+export function findDOMNode(ref) {
+	if (ref) {
+		if (ref.nodeType === 1) {
+			return ref;
+		} else {
+			ref._hostNode ? ref._hostNode : null;
+		}
+	} else {
+		return null;
 	}
 }
 
