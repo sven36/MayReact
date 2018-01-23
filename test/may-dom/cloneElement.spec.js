@@ -1,6 +1,16 @@
-import { cloneElement } from "src/cloneElement";
-import { createClass } from "src/createClass";
-
+import { cloneElement } from "../../src/cloneElement";
+// import { createClass } from "src/createClass";
+import {
+    createElement
+} from '../../src/May';
+import {
+    Component
+} from '../../src/Component';
+var React = {
+    createElement: createElement,
+    Component: Component,
+    cloneElement:cloneElement
+}
 describe("cloneElement", function () {
     it("test", () => {
         var a = {
@@ -25,11 +35,11 @@ describe("cloneElement", function () {
         expect(cloneElement(a).props.v).toBe(2);
     });
     it("should transfer the key property", ()=> {
-        var Component = createClass({
-            render: function() {
+        class Component extends React.Component{
+            render() {
                 return null;
-            },
-        });
+            }
+        }
         var clone = cloneElement(<Component />, {key: "xyz"});
         expect(clone.key).toBe("xyz");
     });

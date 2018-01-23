@@ -7,11 +7,15 @@ import {
 import {
     cloneElement
 } from './cloneElement';
+import {
+    Children
+} from './Children';
 
 var May = {
     createElement: createElement,
     Component: Component,
-    cloneElement: cloneElement
+    cloneElement: cloneElement,
+    Children: Children
 }
 export {
     createElement,
