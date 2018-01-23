@@ -40,15 +40,9 @@ var renderByMay = function (vnode, container, callback) {
 		while (hook = lifeCycleQueue.shift()) {
 			hook();
 		}
-		var owner = Refs.currentOwner
-		container.refs = owner.refs;
-		if (!owner.nodeType) {
-			for (var key in owner) {
-				if (key !== 'props' && key !== 'refs' && key !== 'ref' && key !== 'key' && key !== 'context' && typeof owner[key] !== 'function') {
-					container[key] = owner[key];
-				}
-			}
-		}
+		var ret = vnode._inst || container;
+		Refs.currentOwner = null;
+		return ret;
 	} else {
 		if (vnode && vnode.type) {
 			//为什么React使用var markup=renderChilden();这样的形式呢; 2018-1-13
@@ -63,23 +57,13 @@ var renderByMay = function (vnode, container, callback) {
 		if (container && container.appendChild && rootDom) {
 			container._lastVnode = vnode;
 			container.appendChild(rootDom);
+			var ret = vnode._inst || container;
 			var q;
 			while (q = lifeCycleQueue.shift()) {
 				q();
 			}
-			var owner = Refs.currentOwner
-			container.refs = owner.refs;
-			if (!owner.nodeType) {
-				for (var key in owner) {
-					if (key !== 'props' && key !== 'refs' && key !== 'ref' && key !== 'key' && key !== 'context' && key !== '_renderedVnode' && typeof owner[key] !== 'function') {
-						container[key] = owner[key];
-					}
-				}
-			}
-			if (vnode._inst) {
-				container.setState = vnode._inst.setState.bind(vnode._inst);
-			}
-			return container;
+			Refs.currentOwner = null;
+			return ret;
 		} else {
 			throw new Error('container参数错误');
 		}
@@ -101,7 +85,7 @@ function mountDOM(vnode, isSVG) {
 function mountComposite(vnode, isSVG) {
 	var hostNode = null;
 	var renderedVnode = buildComponentFromVnode(vnode);
-	if (vnode._inst) {
+	if (!Refs.currentOwner && vnode._inst) {//!Refs.currentOwner && 
 		Refs.currentOwner = vnode._inst;
 		vnode._inst.refs = {};
 	}
@@ -261,8 +245,11 @@ function updateDOM(prevVnode, newVnode) {
 		prevVnode.ref(null);
 	}
 	var hostNode = prevVnode._hostNode || null;
-	Refs.currentOwner.refs = {};
-	Refs.currentOwner = hostNode;
+	if (!Refs.currentOwner) {
+		Refs.currentOwner = hostNode;
+		Refs.currentOwner.refs = {};
+	}
+
 	diffChildren(prevVnode, newVnode, hostNode);
 	if (newVnode.ref) {
 		lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
@@ -283,8 +270,10 @@ function updateComposite(prevVnode, newVnode) {
 		instance.props = newVnode.props;
 		// instance.state = newVnode.state;
 	}
-	Refs.currentOwner.refs = {};
-	Refs.currentOwner = instance;
+	if (!Refs.currentOwner) {
+		Refs.currentOwner = instance;
+		Refs.currentOwner.refs = {};
+	}
 	if (instance.componentWillUpdate) {
 		instance.componentWillUpdate();
 	}
@@ -292,8 +281,11 @@ function updateComposite(prevVnode, newVnode) {
 	var newRenderedVnode = instance.render();
 	newVnode._renderedVnode = newRenderedVnode;
 	newVnode._inst = instance;
-
-	diffChildren(prevRenderedVnode, newRenderedVnode, hostNode);
+	if (newRenderedVnode) {
+		diffChildren(prevRenderedVnode, newRenderedVnode, hostNode);
+	} else {
+		disposeVnode(prevRenderedVnode);
+	}
 	if (instance.componentDidUpdate) {
 		lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
 	}
@@ -567,14 +559,11 @@ function disposeVnode(vnode) {
 		if (vnode._inst.componentWillUnmount) {
 			vnode._inst.componentWillUnmount();
 		}
-		var children = vnode._renderedVnode.props.children;
-		if (children) {
-			for (var i = 0; i < children.length; i++) {
-				var c = children[i];
-				typeof c === 'object' && disposeVnode(c);
-			}
-		}
+		instance.refs = null;
 		instance = null;
+	}
+	if (vnode._renderedVnode) {
+		disposeVnode(vnode._renderedVnode);
 	}
 	if (vnode._prevVnode) {
 		vnode._prevVnode = null;
@@ -617,8 +606,11 @@ function diffProps(prev, now) {
 		if (typeof _ref === 'function') {
 			prev.ref(null);
 			prev.ref = null;
+		} else {
+			if (Refs.currentOwner.refs[_ref]) {
+				Refs.currentOwner.refs[_ref] = null;
+			}
 		}
-		Refs.currentOwner.refs[_ref] = null;
 	}
 	if (ref) {
 		if (typeof ref === 'function') {

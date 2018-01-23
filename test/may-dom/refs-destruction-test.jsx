@@ -52,7 +52,7 @@ describe("refs-destruction", function() {
     }
   };
 
-  /*it('should remove refs when destroying the parent', () => {
+  it('should remove refs when destroying the parent', () => {
     var container = document.createElement('div');
     var testInstance = ReactDOM.render(<TestComponent />, container);
     expect(ReactTestUtils.isDOMComponent(testInstance.refs.theInnerDiv)).toBe(
@@ -84,7 +84,7 @@ describe("refs-destruction", function() {
       Object.keys(testInstance.refs || {}).filter(key => testInstance.refs[key])
         .length,
     ).toBe(0);
-  });*/
+  });
 
   it('should not error when destroying child with ref asynchronously', () => {
     class Modal extends React.Component {

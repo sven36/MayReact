@@ -285,7 +285,7 @@ describe("ref", function () {
         var s = ReactDOM.render(<Foo a={1}/>,  div);
         expect(s.refs.aaa.className).toBe("aaa");
         ReactDOM.render(<Foo a={0}/>, div);
-        expect(s.refs.aaa).toBe(null);
+        expect(s.refs.aaa).toBe(undefined);
         expect(s.refs.bbb.className).toBe("bbb");
     });
     it("相同位置上的元素节点的ref类型不一样", function() {
@@ -304,7 +304,7 @@ describe("ref", function () {
         var s = ReactDOM.render(<Foo a={1}/>,  div);
         expect(s.refs.aaa.className).toBe("aaa");
         ReactDOM.render(<Foo a={0}/>, div);
-        expect(s.refs.aaa).toBe(null);
+        expect(s.refs.aaa).toBe(undefined);
         expect(typeof a).toBe("object");
     });
     it("为元素添加ref", function() {
