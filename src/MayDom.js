@@ -30,19 +30,10 @@ export function render(vnode, container, merge) {
  * @param {*} callback 
  */
 var renderByMay = function (vnode, container, callback) {
-	var renderedVnode, rootDom;
+	var renderedVnode, rootDom, result;
 	var lastVnode = container._lastVnode || null;
 	if (lastVnode) { //update
 		mayUpdate(lastVnode, vnode, container);
-		// diffProps(lastVnode, vnode)
-		container._lastVnode = vnode;
-		var hook;
-		while (hook = lifeCycleQueue.shift()) {
-			hook();
-		}
-		var ret = vnode._inst || container;
-		Refs.currentOwner = null;
-		return ret;
 	} else {
 		if (vnode && vnode.type) {
 			//为什么React使用var markup=renderChilden();这样的形式呢; 2018-1-13
@@ -50,28 +41,28 @@ var renderByMay = function (vnode, container, callback) {
 			//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
 			var isSVG = vnode.mtype === 3;
 			rootDom = mountStrategy[vnode.mtype](vnode, isSVG);
+			if (rootDom && container && container.appendChild) {
+				container.appendChild(rootDom);
+			} else {
+				throw new Error('container参数错误');
+			}
 		} else {
 			console.error('render参数错误');
 			return;
 		}
-		if (container && container.appendChild && rootDom) {
-			container._lastVnode = vnode;
-			container.appendChild(rootDom);
-			var ret = vnode._inst || container;
-			if (!vnode._inst) {
-				ret.refs = rootDom.refs;
-			}
-			var q;
-			while (q = lifeCycleQueue.shift()) {
-				q();
-			}
-			Refs.currentOwner = null;
-			return ret;
-		} else {
-			throw new Error('container参数错误');
-		}
 	}
 
+	result = vnode._inst || container;
+	if (!vnode._inst && rootDom) {
+		result.refs = rootDom.refs;
+	}
+	var q;//执行render过程中的回调函数lifeCycle ref等
+	while (q = lifeCycleQueue.shift()) {
+		q();
+	}
+	Refs.currentOwner = null;
+	container._lastVnode = vnode;
+	return result;
 }
 
 function mountDOM(vnode, isSVG) {
@@ -83,6 +74,9 @@ function mountDOM(vnode, isSVG) {
 	setDomAttr(hostNode, vnode.props);
 	vnode._hostNode = hostNode;
 	var children = vnode.props.children || null;
+	if (children && !Array.isArray(children)) {
+		children = [children];
+	}
 	var props = vnode.props;
 	var cdom, c, parentContext;
 	if (vnode._refOwner && vnode._refOwner.context) {
@@ -106,11 +100,7 @@ function mountDOM(vnode, isSVG) {
 				case 'object': //vnode
 					if (c.type) {
 						if (parentContext) {
-							if (c.context) {
-								c.context = Object.assign(c.context, parentContext);
-							} else {
-								c.context = parentContext;
-							}
+							c.context = getContextByTypes(parentContext, c.type.contextTypes);
 						}
 						cdom = mountStrategy[c.mtype](c, isSVG);
 						c._hostNode = cdom;
@@ -229,6 +219,18 @@ function buildComponentFromVnode(vnode) {
 	vnode._renderedVnode = renderedVnode;
 	return renderedVnode;
 }
+function getContextByTypes(context, typeCheck) {
+	var ret = {};
+	if (!context || !typeCheck) {
+		return ret;
+	}
+	for (const key in typeCheck) {
+		if (context.hasOwnProperty(key)) {
+			ret[key] = context[key];
+		}
+	}
+	return ret;
+}
 
 // function doRender() {
 // 	return this.constructor.apply(this, arguments);
@@ -341,12 +343,16 @@ function mayUpdate(prevVnode, newVnode, container) {
 function diffChildren(prevVnode, updatedVnode, parent) {
 	var prevChildren = prevVnode._vChildren || null;
 	var newRenderedChild = updatedVnode.props.children;
+	if (newRenderedChild && !Array.isArray(newRenderedChild)) {
+		newRenderedChild = [newRenderedChild];
+	}
 	//diff之前 遍历prevchildren 与newChildren 如有相同key的只对其props diff
 	var _mountChildren = [];
 	var _unMountChildren = [];
 	var k, prevK, _prevK, _tran;
 	if (newRenderedChild) {
-		for (var i = 0; i < newRenderedChild.length; i++) {
+		var len = newRenderedChild.length;
+		for (var i = 0; i < len; i++) {
 			var c = newRenderedChild[i];
 			var t = typeof c;
 			switch (t) {
@@ -473,7 +479,10 @@ function flushUnMounts(oldChildren) {
 //把children带Key的放一起  不带Key的放一起（因为他们很可能不变化，顺序也不变减少diff寻找）
 function transformChildren(renderedVnode, parent) {
 	var children = renderedVnode.props.children || null;
-	var len = children && children.length;
+	if (children && !Array.isArray(children)) {
+		children = [children];
+	}
+	var len = children ? children.length : 0;
 	var childList = [].slice.call(parent.childNodes);
 	var result = children ? {} : null;
 	//如有undefined null 简单数据类型合并 noCount++;

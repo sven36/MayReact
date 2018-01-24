@@ -14,7 +14,7 @@ describe('may.js', () => {
   it('createElement', () => {
     var el = createElement("p", null, 'sst');
     expect(el.type).toBe("p");
-    expect(el.props.children.length).toBe(1);
+    expect(el.props.children.length).toBe(3);
   });
 
   it('component', () => {

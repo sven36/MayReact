@@ -41,13 +41,8 @@ export function createElement(type, config, children) {
             array.push(arguments[i + 2]);
         }
         props.children = array;
-    } else if (len === 1 && children) {
-        if (!Array.isArray(children)) {
-            props.children = [];
-            props.children[0] = children;
-        } else {
-            props.children = children;
-        }
+    } else if (len === 1) {// && children
+        props.children = children;
     }
 
     return new Vnode(type, key, ref, props, mtype);
