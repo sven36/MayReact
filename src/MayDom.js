@@ -49,7 +49,7 @@ var renderByMay = function (vnode, container, callback) {
 			//因为如果按renderComponentChildren(renderedVnode, rootDom, _isSvg);传入container这种
 			//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
 			var isSVG = vnode.mtype === 3;
-			rootDom = mountComponent(vnode, isSVG);
+			rootDom = mountStrategy[vnode.mtype](vnode, isSVG);
 		} else {
 			console.error('render参数错误');
 			return;
@@ -58,6 +58,9 @@ var renderByMay = function (vnode, container, callback) {
 			container._lastVnode = vnode;
 			container.appendChild(rootDom);
 			var ret = vnode._inst || container;
+			if (!vnode._inst) {
+				ret.refs = rootDom.refs;
+			}
 			var q;
 			while (q = lifeCycleQueue.shift()) {
 				q();
@@ -79,54 +82,19 @@ function mountDOM(vnode, isSVG) {
 	}
 	setDomAttr(hostNode, vnode.props);
 	vnode._hostNode = hostNode;
-	return hostNode;
-}
-
-function mountComposite(vnode, isSVG) {
-	var hostNode = null;
-	var renderedVnode = buildComponentFromVnode(vnode);
-	if (!Refs.currentOwner && vnode._inst) {//!Refs.currentOwner && 
-		Refs.currentOwner = vnode._inst;
-		vnode._inst.refs = {};
-	}
-	if (renderedVnode) {
-		//递归遍历 深度优先
-		hostNode = mountComponent(renderedVnode, isSVG);
-		//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
-		renderedVnode._vChildren = transformChildren(renderedVnode, hostNode);
-		renderedVnode._hostNode = hostNode;
-	} else { //render 返回null
-		hostNode = document.createComment('empty');
-	}
-	return hostNode;
-}
-
-//mountDOM vnode.type为string直接createElement 然后render children即可
-//mountComposite vnode.type为function 需实例化component 再render children
-var mountStrategy = {
-	1: mountDOM,
-	2: mountComposite,
-	3: mountDOM,
-	4: updateDOM,
-	5: updateComposite,
-	6: updateDOM,
-}
-var lifeCycleQueue = [];
-
-
-function mountComponent(vnode, isSVG) {
-	//React是根据type类型分成不同的Component各自具备各自的mount与update方法
-	//我们这里简化成根据type类型调用不同的方法
-	var hostNode = mountStrategy[vnode.mtype](vnode, isSVG);
 	var children = vnode.props.children || null;
 	var props = vnode.props;
-	var cdom, c;
-	if (children && hostNode.nodeType === 1) {
+	var cdom, c, parentContext;
+	if (vnode._refOwner && vnode._refOwner.context) {
+		parentContext = vnode._refOwner.context;
+	}
+	if (children) {
 		var len = children.length;
 		for (let i = 0; i < len; i++) {
 			var c = children[i];
 			var type = typeof c;
 			switch (type) {
+				case 'number':
 				case 'string':
 					cdom = document.createTextNode(c);
 					if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
@@ -137,7 +105,14 @@ function mountComponent(vnode, isSVG) {
 					break;
 				case 'object': //vnode
 					if (c.type) {
-						cdom = mountComponent(c, isSVG);
+						if (parentContext) {
+							if (c.context) {
+								c.context = Object.assign(c.context, parentContext);
+							} else {
+								c.context = parentContext;
+							}
+						}
+						cdom = mountStrategy[c.mtype](c, isSVG);
 						c._hostNode = cdom;
 						hostNode.appendChild(cdom);
 					} else { //有可能是子数组iterator
@@ -145,7 +120,7 @@ function mountComponent(vnode, isSVG) {
 						if (iteratorFn) {
 							var ret = callIteractor(iteratorFn, c);
 							for (var _i = 0; _i < ret.length; _i++) {
-								cdom = mountComponent(ret[_i], isSVG);
+								cdom = mountStrategy[ret[_i].mtype](ret[_i], isSVG);
 								ret[_i]._hostNode = cdom;
 								hostNode.appendChild(cdom);
 							}
@@ -153,14 +128,41 @@ function mountComponent(vnode, isSVG) {
 					}
 			}
 		}
-	}
-	if (vnode.mtype === 1 && vnode.props.children) {
 		vnode._vChildren = transformChildren(vnode, hostNode);
+	}
+
+	if (vnode.ref) {
+		var ref = vnode.ref;
+		var owner = Refs.currentOwner;
+		var refInst = vnode._inst || vnode._hostNode || null;
+		if (typeof ref === 'function') {
+			lifeCycleQueue.push(ref.bind(owner, refInst));
+		} else if (typeof ref === 'string') { //ref 为string
+			owner.refs[ref] = refInst;
+		}
+	}
+	return hostNode;
+}
+
+function mountComposite(vnode, isSVG) {
+	var hostNode = null;
+	var renderedVnode = buildComponentFromVnode(vnode);
+	if (!Refs.currentOwner && vnode._inst) { //!Refs.currentOwner && 
+		Refs.currentOwner = vnode._inst;
+		vnode._inst.refs = {};
+	}
+	if (renderedVnode) {
+		//递归遍历 深度优先
+		hostNode = mountStrategy[renderedVnode.mtype](renderedVnode, isSVG);
+		//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
+		renderedVnode._vChildren = transformChildren(renderedVnode, hostNode);
+		renderedVnode._hostNode = hostNode;
+	} else { //render 返回null
+		hostNode = document.createComment('empty');
 	}
 	var inst = vnode._inst || null;
 	if (inst && inst.componentDidMount) {
 		lifeCycleQueue.push(inst.componentDidMount.bind(inst));
-		// inst.componentDidMount();
 	}
 	if (vnode.ref) {
 		var ref = vnode.ref;
@@ -174,6 +176,19 @@ function mountComponent(vnode, isSVG) {
 	}
 	return hostNode;
 }
+//React是根据type类型分成不同的Component各自具备各自的mount与update方法
+//我们这里简化成根据type类型调用不同的方法
+//mountDOM vnode.type为string直接createElement 然后render children即可
+//mountComposite vnode.type为function 需实例化component 再render children
+var mountStrategy = {
+	1: mountDOM,
+	2: mountComposite,
+	3: mountDOM,
+	4: updateDOM,
+	5: updateComposite,
+	6: updateDOM,
+}
+var lifeCycleQueue = [];
 
 function buildComponentFromVnode(vnode) {
 	var props = vnode.props;
@@ -189,10 +204,24 @@ function buildComponentFromVnode(vnode) {
 		if (inst.componentWillMount) inst.componentWillMount();
 
 		renderedVnode = inst.render(props, context);
+		if (inst.getChildContext) {
+			var getContext = inst.getChildContext();
+			if (getContext && typeof getContext === 'object') {
+				if (!context) {
+					context = {};
+				}
+				context = Object.assign(context, getContext);
+			}
+		}
+		if (context) {
+			inst.context = context;
+		}
 		// vnode.type === 'function' 代表其为Component Component中才能setState
 		//setState会触发reRender 故保存有助于domDiff的参数
 		vnode._inst = inst;
 		inst._renderedVnode = renderedVnode;
+		//设定owner 用于ref绑定
+		renderedVnode && (renderedVnode._refOwner = inst);
 	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
 		renderedVnode = Ctor.call(vnode, props, context);
 	}
@@ -301,20 +330,8 @@ function mayUpdate(prevVnode, newVnode, container) {
 	var dom;
 	if (prevVnode.type === newVnode.type) {
 		dom = mountStrategy[newVnode.mtype + 3](prevVnode, newVnode);
-
-		// if (!newVnode.props.children) {
-		// 	disposeVnode(prevVnode);
-		// 	disposeDom(hostNode);
-		// }
-		// if (!prevVnode.props.children) {
-		// 	var dom = mountComponent(vnode, isSVG);
-		// 	container.replaceChild(dom, hostNode);
-		// 	disposeVnode(prevVnode);
-		// 	disposeDom(hostNode);
-		// }
-
 	} else {
-		dom = mountComponent(vnode, isSVG);
+		dom = mountStrategy[vnode.mtype](vnode, isSVG);
 		container.replaceChild(dom, hostNode);
 		disposeVnode(prevVnode);
 		disposeDom(hostNode);
@@ -394,35 +411,8 @@ function flushMounts(newChildren, parent) {
 				//如果能复用之前节点
 				if (child._reused) {
 					var hostNode = updateComposite(child._prevVnode, child);
-					// var instance = child._inst;
-					// if (instance.componentWillReceiProps) {
-					// 	instance.componentWillReceiProps();
-					// }
-					// if (instance.componentWillUpdate) {
-					// 	instance.componentWillUpdate();
-					// }
-					// var renderedVnode = instance.render();
-					// child._renderedVnode = renderedVnode;
-					// var node = parent.childNodes[_i];
-					// renderedVnode._hostNode = child._hostNode;
-					// diffProps(child._prevVnode._renderedVnode, renderedVnode);
-					// if (node) {
-					// 	if (node !== child._hostNode) {
-					// 		newDom = parent.removeChild(child._hostNode);
-					// 		parent.insertBefore(newDom, parent.childNodes[_i])
-					// 	}
-					// } else {
-					// 	newDom = child._hostNode;
-					// 	parent.appendChild(newDom);
-					// }
-					// if (instance.componentDidUpdate) {
-					// 	lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
-					// }
-					// if (child.ref) {
-					// 	lifeCycleQueue.push(child.ref.bind(child, child));
-					// }
 				} else {
-					newDom = mountComponent(child);
+					newDom = mountStrategy[child.mtype](child);
 					var node = parent.childNodes[_i];
 					if (node) {
 						parent.insertBefore(newDom, node);
@@ -443,7 +433,7 @@ function flushMounts(newChildren, parent) {
 						}
 						diffProps(child._prevVnode, child);
 					} else {
-						newDom = mountComponent(child);
+						newDom = mountStrategy[child.mtype](child);
 						child._hostNode = newDom;
 						parent.insertBefore(newDom, _node);
 					}
@@ -500,9 +490,17 @@ function transformChildren(renderedVnode, parent) {
 					} else {
 						result[_key].push(c);
 					}
-					// if (c.ref) {//如果子dom有ref 标识一下 
-					// 	renderedVnode._hasRef = true;
-					// }
+					if (c.ref) { //如果子dom有ref 标识一下 
+						var owner = renderedVnode._refOwner;
+						if (owner) {
+							if (owner.refs) {
+								owner.refs[c.ref] = c._inst || c._hostNode || null;
+							} else {
+								owner.refs = {};
+								owner.refs[c.ref] = c._inst || c._hostNode || null;
+							}
+						}
+					}
 				} else {
 					var iteratorFn = getIteractor(c);
 					if (iteratorFn) {
@@ -607,7 +605,7 @@ function diffProps(prev, now) {
 			prev.ref(null);
 			prev.ref = null;
 		} else {
-			if (Refs.currentOwner.refs[_ref]) {
+			if (Refs.currentOwner && Refs.currentOwner.refs[_ref]) {
 				Refs.currentOwner.refs[_ref] = null;
 			}
 		}
@@ -617,7 +615,14 @@ function diffProps(prev, now) {
 			lifeCycleQueue.push(now.ref.bind(now, now));
 		}
 		if (typeof ref === 'string') {
-			Refs.currentOwner.refs[ref] = hostNode;
+			if (Refs.currentOwner) {
+				if (Refs.currentOwner.refs) {
+					Refs.currentOwner.refs[ref] = hostNode;
+				} else {
+					Refs.currentOwner.refs = {};
+					Refs.currentOwner.refs[ref] = hostNode;
+				}
+			}
 		}
 	}
 
@@ -694,53 +699,3 @@ function callIteractor(iteratorFn, children) {
 	}
 	return ret;
 }
-
-/**
- * //如果看不懂递归渲染节点  最好自己从根节点开始写 慢慢迭代 抽出公共方法
- * @param {Component} Ctor //Component构造函数   Component原型对象绑定了传入的render,componentWillMount,onClick等方法
- * @param {*} props 
- * @param {*} context 
-
-function renderRootComponent(vnode, props, context) {
-	var Ctor = vnode.type;
-	var constructor;
-	var component = new Ctor(props, context);
-	//Component  PureComponent
-	if (Ctor.prototype && Ctor.prototype.render) {
-		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
-		if (component.componentWillMount) component.componentWillMount();
-	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
-		component.constructor = Ctor;
-		component.render = doRender;
-	}
-	var renderedVnode = component.render(props, context);
-	var nodeName = renderedVnode.type;
-	var rootDom = document.createElement(nodeName);
-	//递归子节点 添加到container
-	var vchildren = renderedVnode.props.children;
-	var c;
-	while ((c = vchildren.shift())) {
-		var cdom;
-		if(c&&c.type&&(typeof c.type==='function')){
-			var renderedComponent=buildComponentFromVnode(c);
-			cdom=document.createElement(renderedComponent.type);
-			renderComponentChildren(renderedComponent,cdom);
-			rootDom.appendChild(cdom);
-		}
-		var type = typeof c;
-		switch (type) {
-			case 'string'://string子节点
-			case 'number':
-				cdom = document.createTextNode(c);
-				rootDom.appendChild(cdom);
-				break;
-			case 'object'://vnode 子节点
-				//cdom = buildDomFromVnode(c, rootDom);
-				break;
-		}
-		cdom = null;
-		type = null;
-	}
-
-	return rootDom;
-} */

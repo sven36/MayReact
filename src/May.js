@@ -5,6 +5,9 @@ import {
     Component
 } from './Component';
 import {
+    PureComponent
+} from './PureComponent';
+import {
     cloneElement
 } from './cloneElement';
 import {
@@ -14,6 +17,7 @@ import {
 var May = {
     createElement: createElement,
     Component: Component,
+    PureComponent: PureComponent,
     cloneElement: cloneElement,
     Children: Children
 }

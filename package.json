@@ -9,6 +9,7 @@
   },
   "author": "c",
   "license": "MIT",
+  "tips": "babel-preset-env是来替代 babel-preset(latest,es2015~)等插件包的 stage-1是箭头函数等编译 stage-3是async等编译",
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
@@ -17,7 +18,9 @@
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
     "babel-preset-stage-1": "^6.24.1",
+    "babel-preset-stage-3": "^6.24.1",
     "jasmine-core": "^2.8.0",
     "karma": "^1.7.1",
     "karma-chrome-launcher": "^2.2.0",

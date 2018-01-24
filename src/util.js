@@ -160,3 +160,15 @@ export function extend(target, src) {
     }
     return target;
 }
+/**
+ * 寄生组合式继承
+ * @param {*} target 
+ * @param {*} superClass 
+ */
+export function inherits(target, superClass) {
+    function b() {};
+    b.prototype = superClass.prototype;
+    var fn = target.prototype = new b();
+    fn.constructor = target;
+    return fn;
+}
