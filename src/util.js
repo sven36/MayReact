@@ -1,3 +1,7 @@
+import {
+    addEvent,
+    getBrowserName
+} from './event';
 const cssSuffix = {
     //需要加后缀如 px s(秒)等css属性摘出来
     //其实用正则更简洁一些,不过可能 可读性可维护性不如key value
@@ -58,6 +62,8 @@ const cssSuffix = {
     lineHeight: 'px'
 }
 
+// let __type = Object.prototype.toString;
+
 
 //有个trim方法 兼容性需要处理
 /**
@@ -73,7 +79,7 @@ export function setDomAttr(dom, props) {
     }
     for (const key in props) {
         if (key !== 'children' && key !== 'className' && key !== 'key' && key !== 'style') {
-            if (key.indexOf('on') !== 0) {
+            if (!isEvent(key)) {
                 if (dom.nodeName !== 'INPUT') {
                     if (props[key] !== null && props[key] !== false) {
                         //attribute 永远是字符串
@@ -87,8 +93,10 @@ export function setDomAttr(dom, props) {
                 }
             } else {
                 var e = key.substring(2).toLowerCase();
-                dom.addEventListener(e, eventProxy);
-                (dom._listener || (dom._listener = {}))[e] = props[key];
+                var eventName = getBrowserName(key);
+                addEvent(eventName);
+                var listener = dom._listener || (dom._listener = {});
+                listener[e] = props[key];
             }
         }
     }
@@ -133,7 +141,7 @@ export function removeDomAttr(dom, props, key) {
     if (nodeType === 3 || nodeType === 8 || nodeType === 2) {
         return;
     }
-    if (key.indexOf('on') !== 0) {
+    if (!isEvent(key)) {
         switch (key) {
             case 'className':
                 dom.removeAttribute('class');
@@ -145,15 +153,21 @@ export function removeDomAttr(dom, props, key) {
                 break;
         }
     } else {
-        dom.removeEventListener(key, eventProxy);
+        var e = key.substring(2).toLowerCase();
+        if (dom._listener && dom._listener[e]) {
+            delete dom._listener[e];
+        }
     }
 
 
 }
 
-export function eventProxy(e) {
-    return this._listener[e.type](e);
+function isEvent(name) {
+    return /^on[A-Z]/.test(name);
 }
+// export function eventProxy(e) {
+//     return this._listener[e.type](e);
+// }
 export function extend(target, src) {
     for (var key in src) {
         target[key] = src[key];

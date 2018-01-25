@@ -56,7 +56,7 @@ var renderByMay = function (vnode, container, callback) {
 	if (!vnode._inst && rootDom) {
 		result.refs = rootDom.refs;
 	}
-	var q;//执行render过程中的回调函数lifeCycle ref等
+	var q; //执行render过程中的回调函数lifeCycle ref等
 	while (q = lifeCycleQueue.shift()) {
 		q();
 	}
@@ -219,6 +219,7 @@ function buildComponentFromVnode(vnode) {
 	vnode._renderedVnode = renderedVnode;
 	return renderedVnode;
 }
+
 function getContextByTypes(context, typeCheck) {
 	var ret = {};
 	if (!context || !typeCheck) {
@@ -236,34 +237,35 @@ function getContextByTypes(context, typeCheck) {
 // 	return this.constructor.apply(this, arguments);
 // }
 
-export function reRender(component) {
-	var props = component.props;
-	var context = component.context;
-	var prevstate = component.state;
-	var prevRenderedVnode = component._renderedVnode;
+export function reRender(instance) {
+	var props = instance.props;
+	var context = instance.context;
+	var prevstate = instance.state;
+	var prevRenderedVnode = instance._renderedVnode;
 	var hostNode = prevRenderedVnode._hostNode;
-	if (component._mergeStateQueue) {
+	if (instance._mergeStateQueue) {
 		var updateState = {};
-		for (var i = 0; i < component._mergeStateQueue.length; i++) {
-			updateState = extend(updateState, component._mergeStateQueue[i]);
+		for (var i = 0; i < instance._mergeStateQueue.length; i++) {
+			updateState = extend(updateState, instance._mergeStateQueue[i]);
 		}
-		component.state = updateState;
+		instance.state = updateState;
 	}
-	if (component.shouldComponentUpdate && component.shouldComponentUpdate(props, component.state, context) === false) {
+	if (instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, instance.state, context) === false) {
 		return;
 	}
 
-	if (component.componentWillUpdate) {
-		component.componentWillUpdate(props, component.state, context);
+	if (instance.componentWillUpdate) {
+		instance.componentWillUpdate(props, instance.state, context);
 	}
 
-	var updatedVnode = component.render(props, context);
-	component._renderedVnode = updatedVnode;
-
+	var updatedVnode = instance.render(props, context);
+	instance._renderedVnode = updatedVnode;
 	diffChildren(prevRenderedVnode, updatedVnode, hostNode);
+	instance._renderedVnode._hostNode = hostNode;
+	updatedVnode._vChildren = transformChildren(updatedVnode, hostNode);
 
-	if (component.componentDidUpdate) {
-		component.componentDidUpdate(props, component.state, context);
+	if (instance.componentDidUpdate) {
+		instance.componentDidUpdate(props, instance.state, context);
 	}
 	var q;
 	while (q = lifeCycleQueue.shift()) {
@@ -376,7 +378,7 @@ function diffChildren(prevVnode, updatedVnode, parent) {
 				case 'undefined':
 					break;
 			}
-			prevK = prevChildren[k];
+			prevK = prevChildren && prevChildren[k];
 			if (prevK && prevK.length > 0) { //试试=0 else
 				for (var _i = 0; _i < prevK.length; _i++) {
 					var vnode = prevK[_i];
@@ -403,7 +405,6 @@ function diffChildren(prevVnode, updatedVnode, parent) {
 	}
 	flushMounts(_mountChildren, parent);
 	flushUnMounts(_unMountChildren);
-
 }
 
 function flushMounts(newChildren, parent) {
@@ -430,29 +431,23 @@ function flushMounts(newChildren, parent) {
 
 				break;
 			case 'string':
-				if (child.type !== '#text') {
-					var _node = parent.childNodes[_i];
-					if (child._reused) {
-						if (_node && _node !== child._hostNode) {
-							newDom = parent.removeChild(child._hostNode);
-							parent.insertBefore(newDom, _node)
-						}
-						diffProps(child._prevVnode, child);
-					} else {
-						newDom = mountStrategy[child.mtype](child);
-						child._hostNode = newDom;
-						parent.insertBefore(newDom, _node);
+				var _node = parent.childNodes[_i];
+				if (child._reused) {
+					if (_node && _node !== child._hostNode) {
+						newDom = parent.removeChild(child._hostNode);
+						parent.insertBefore(newDom, _node)
 					}
-				} else {
-					if (child._reused) {
-						var node = parent.childNodes[_i];
-						if (node && node.nodeName.toLowerCase() !== child.type) {
-							newDom = parent.removeChild(child._hostNode);
-							parent.insertBefore(newDom, node)
-						}
+					if (child.type !== '#text') {
+						diffProps(child._prevVnode, child);
+					} else { //text
 						child._hostNode.nodeValue = child.value;
 					}
+				} else {
+					newDom = mountStrategy[child.mtype](child);
+					child._hostNode = newDom;
+					parent.insertBefore(newDom, _node);
 				}
+
 				break;
 
 		}

@@ -63,8 +63,8 @@ describe("ref", function () {
         var s = ReactDOM.render(<App />, div);
 
         var dom = s.refs.a;
-        // ReactTestUtils.Simulate.click(dom);
-        // expect(document.activeElement).toBe(s.myTextInput);
+        ReactTestUtils.Simulate.click(dom);
+        expect(document.activeElement).toBe(s.myTextInput);
         expect(s.myTextInput).toBeDefined();
 
     });
