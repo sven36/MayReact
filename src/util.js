@@ -1,68 +1,13 @@
 import {
     addEvent,
-    getBrowserName
+    getBrowserName,
+    eventHooks
 } from './event';
-const cssSuffix = {
-    //需要加后缀如 px s(秒)等css属性摘出来
-    //其实用正则更简洁一些,不过可能 可读性可维护性不如key value
-    //动画属性（Animation）
-    animationDelay: 's',
-    //CSS 边框属性（Border 和 Outline）
-    borderBottomWidth: 'px',
-    borderLeftWidth: 'px',
-    borderRightWidth: 'px',
-    borderTopWidth: 'px',
-    borderWidth: 'px',
-    outlineWidth: 'px',
-    borderBottomLeftRadius: 'px',
-    borderBottomRightRadius: 'px',
-    borderRadius: 'px',
-    borderTopLeftRadius: 'px',
-    borderTopRightRadius: 'px',
-    //Box 属性
-    rotation: 'deg',
-    //CSS 尺寸属性（Dimension）
-    height: 'px',
-    maxHeight: 'px',
-    maxWidth: 'px',
-    minHeight: 'px',
-    minWidth: 'px',
-    width: 'px',
-    //CSS 字体属性（Font） font-variant:small-caps; 段落设置为小型大写字母字体
-    fontSize: 'px',
-    //CSS 外边距属性（Margin）
-    margin: 'px',
-    marginLeft: 'px',
-    marginRight: 'px',
-    marginTop: 'px',
-    marginBottom: 'px',
-    //多列属性（Multi-column）
-    columnGap: 'px',
-    WebkitColumnGap: 'px',
-    MozColumnGap: 'px',
-    columnRuleWidth: 'px',
-    WebkitColumnRuleWidth: 'px',
-    MozColumnRuleWidth: 'px',
-    columnWidth: 'px',
-    WebkitColumnWidth: 'px',
-    MozColumnWidth: 'px',
-    //CSS 内边距属性（Padding）
-    padding: 'px',
-    paddingLeft: 'px',
-    paddingRight: 'px',
-    paddingTop: 'px',
-    paddingBottom: 'px',
-    //CSS 定位属性（Positioning）
-    left: 'px',
-    right: 'px',
-    top: 'px',
-    bottom: 'px',
-    //CSS 文本属性（Text）
-    letterSpacing: 'px',
-    lineHeight: 'px'
-}
 
-// let __type = Object.prototype.toString;
+export var options = {
+    callbackQueue: [],//生命周期过程中的回调队列
+    isInEvent: false//是否在触发事件 回调事件中的setstate合并触发
+}
 
 
 //有个trim方法 兼容性需要处理
@@ -95,6 +40,11 @@ export function setDomAttr(dom, props) {
                 var e = key.substring(2).toLowerCase();
                 var eventName = getBrowserName(key);
                 addEvent(eventName);
+                //input的change等特殊事件需要特殊处理
+                var hook = eventHooks[eventName];
+                if (hook) {
+                    hook(dom, eventName);
+                }
                 var listener = dom._listener || (dom._listener = {});
                 listener[e] = props[key];
             }
@@ -180,9 +130,68 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() {};
+    function b() { };
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;
     return fn;
+}
+const cssSuffix = {
+    //需要加后缀如 px s(秒)等css属性摘出来
+    //其实用正则更简洁一些,不过可能 可读性可维护性不如key value
+    //动画属性（Animation）
+    animationDelay: 's',
+    //CSS 边框属性（Border 和 Outline）
+    borderBottomWidth: 'px',
+    borderLeftWidth: 'px',
+    borderRightWidth: 'px',
+    borderTopWidth: 'px',
+    borderWidth: 'px',
+    outlineWidth: 'px',
+    borderBottomLeftRadius: 'px',
+    borderBottomRightRadius: 'px',
+    borderRadius: 'px',
+    borderTopLeftRadius: 'px',
+    borderTopRightRadius: 'px',
+    //Box 属性
+    rotation: 'deg',
+    //CSS 尺寸属性（Dimension）
+    height: 'px',
+    maxHeight: 'px',
+    maxWidth: 'px',
+    minHeight: 'px',
+    minWidth: 'px',
+    width: 'px',
+    //CSS 字体属性（Font） font-variant:small-caps; 段落设置为小型大写字母字体
+    fontSize: 'px',
+    //CSS 外边距属性（Margin）
+    margin: 'px',
+    marginLeft: 'px',
+    marginRight: 'px',
+    marginTop: 'px',
+    marginBottom: 'px',
+    //多列属性（Multi-column）
+    columnGap: 'px',
+    WebkitColumnGap: 'px',
+    MozColumnGap: 'px',
+    columnRuleWidth: 'px',
+    WebkitColumnRuleWidth: 'px',
+    MozColumnRuleWidth: 'px',
+    columnWidth: 'px',
+    WebkitColumnWidth: 'px',
+    MozColumnWidth: 'px',
+    //CSS 内边距属性（Padding）
+    padding: 'px',
+    paddingLeft: 'px',
+    paddingRight: 'px',
+    paddingTop: 'px',
+    paddingBottom: 'px',
+    //CSS 定位属性（Positioning）
+    left: 'px',
+    right: 'px',
+    top: 'px',
+    bottom: 'px',
+    //CSS 文本属性（Text）
+    letterSpacing: 'px',
+    lineHeight: 'px'
 }

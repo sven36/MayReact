@@ -19,7 +19,7 @@ Component.prototype.setState = function (state, callback) {
     if (dirtyComponents.indexOf(this) === -1) {
         dirtyComponents.push(this);
     }
-    flushUpdates();
+    flushUpdates(callback);
 }
 Component.prototype.forceUpdate = function (callback) {
     this._dirty = true;

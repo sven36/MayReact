@@ -1,15 +1,30 @@
-import ReactTestUtils from "../../lib/ReactTestUtils";
-import React from '../../src/May';
-import { render, unmountComponentAtNode } from '../../src/MayDom'
-var ReactDOM = {
-    render: render,
-    unmountComponentAtNode: unmountComponentAtNode
-}
-React.render = render;
+// import ReactTestUtils from "../../lib/ReactTestUtils";
+// import React from '../../src/May';
+// import { render, unmountComponentAtNode } from '../../src/MayDom'
+// var ReactDOM = {
+//     render: render,
+//     unmountComponentAtNode: unmountComponentAtNode
+// }
+// React.render = render;
+// import {
+//     dispatchEvent, SyntheticEvent, addEvent
+// } from '../../src/event';
 
-// import React from "../../dist/ReactANU";
-// var ReactDOM = React;
-
+import React from "../../dist/ReactANU";
+var ReactDOM = React;
+var ReactTestUtils = { Simulate: {} };
+"click,change,keyDown,keyUp,KeyPress,mouseDown,mouseUp,mouseMove".replace(/\w+/g, function (name) {
+    ReactTestUtils.Simulate[name] = function (node, opts) {
+        if (!node || node.nodeType !== 1) {
+            throw "第一个参数必须为元素节点";
+        }
+        var fakeNativeEvent = opts || {};
+        fakeNativeEvent.target = node;
+        fakeNativeEvent.simulated = true;
+        fakeNativeEvent.type = name.toLowerCase();
+        React.eventSystem.dispatchEvent(fakeNativeEvent, name.toLowerCase());
+    };
+});
 
 describe("事件系统模块", function () {
     // this.timeout(200000);
@@ -25,10 +40,10 @@ describe("事件系统模块", function () {
         div = document.createElement("div");
         body.appendChild(div);
     });
-    afterEach(function() {
-        body.removeChild(div);
-    });
-    it("事件与样式", async () => {
+    // afterEach(function () {
+    //     body.removeChild(div);
+    // });
+    /*it("事件与样式", async () => {
         class App extends React.Component {
             constructor() {
                 super();
@@ -116,7 +131,7 @@ describe("事件系统模块", function () {
         expect(aaa.trim()).toBe("ccc bbb");
     });
 
-    /*it("模拟mouseover,mouseout", async () => {
+    it("模拟mouseover,mouseout", async () => {
         var aaa = "";
         class App extends React.Component {
             constructor(props) {
@@ -132,6 +147,7 @@ describe("事件系统模块", function () {
                 aaa += "aaa ";
             }
             mouseout(e) {
+                console.log(aaa);
                 aaa += "bbb ";
             }
 
@@ -146,7 +162,7 @@ describe("事件系统模块", function () {
                                 width: 200,
                                 height: 200
                             }}
-                        />
+                        >67</div>
                         <div id="mouse2" />
                     </div>
                 );
@@ -154,13 +170,8 @@ describe("事件系统模块", function () {
         }
 
         var s = ReactDOM.render(<App />, div);
-        // await browser
-        //     .pause(100)
-        //     .moveToObject("#mouse1")
-        //     .pause(100)
-        //     .moveToObject("#mouse2")
-        //     .$apply();
-
+        ReactTestUtils.Simulate.mouseover(document.getElementById('mouse1'));
+        ReactTestUtils.Simulate.mouseout(document.getElementById('mouse1'));
         expect(aaa.trim()).toBe("aaa bbb");
     });
     it("1.1.2checkbox绑定onChange事件会触发两次", async () => {
@@ -169,12 +180,8 @@ describe("事件系统模块", function () {
             logIndex++;
         }
 
-        var el = ReactDOM.render(<input type="checkbox" onChange={refFn} />, div);
-        // await browser
-        //     .click(el)
-        //     .pause(100)
-        //     .$apply();
-
+        var el = ReactDOM.render(<input id="ci" type="checkbox" onChange={refFn} />, div);
+        ReactTestUtils.Simulate.change(document.getElementById('ci'));
         expect(logIndex).toBe(1);
     });
     it("模拟mouseenter,mouseleave", async () => {
@@ -215,13 +222,8 @@ describe("事件系统模块", function () {
         }
 
         var s = ReactDOM.render(<App />, div);
-        await browser
-            .pause(100)
-            .moveToObject("#mouse3")
-            .pause(100)
-            .moveToObject("#mouse4")
-            .$apply();
-
+        ReactTestUtils.Simulate.mouseEnter(document.getElementById('mouse3'));
+        ReactTestUtils.Simulate.mouseLeave(document.getElementById('mouse3'));
         expect(aaa.trim()).toBe("aaa bbb");
     });
     it("捕获", async () => {
@@ -263,12 +265,7 @@ describe("事件系统模块", function () {
         }
 
         var s = ReactDOM.render(<App />, div);
-
-        await browser
-            .pause(100)
-            .click("#capture")
-            .pause(100)
-            .$apply();
+        ReactTestUtils.Simulate.click(document.getElementById("capture"));
 
         expect(aaa.trim()).toBe("aaa bbb");
     });
@@ -289,6 +286,7 @@ describe("事件系统模块", function () {
             }
             onFocus2(e) {
                 aaa += "bbb ";
+                console.log('fff ' + aaa);
             }
 
             render() {
@@ -309,7 +307,7 @@ describe("事件系统模块", function () {
                                 height: 100
                             }}
                         >
-                            222
+                            focus2
                         </div>
                     </div>
                 );
@@ -317,22 +315,18 @@ describe("事件系统模块", function () {
         }
 
         var s = ReactDOM.render(<App />, div);
-        await browser
-            .pause(100)
-            .click("#focus2")
-            .pause(100)
-            .$apply();
+        ReactTestUtils.Simulate.focus(document.getElementById("focus2"));
 
         expect(aaa.trim()).toBe("aaa bbb");
     });
-    it("测试事件对象的属性", function() {
+    it("测试事件对象的属性", function () {
         var obj = {
             type: "change",
             srcElement: 1
         };
         var e = new SyntheticEvent(obj);
         expect(e.type).toBe("change");
-        expect(e.timeStamp).toA("number");
+        expect(typeof e.timeStamp).toBe("number");
         expect(e.target).toBe(1);
         expect(e.nativeEvent).toBe(obj);
         e.stopImmediatePropagation();
@@ -341,10 +335,10 @@ describe("事件系统模块", function () {
         var e2 = new SyntheticEvent(e);
         expect(e2).toBe(e);
 
-        var p = new DOMElement();
-        p.addEventListener = false;
-        addEvent(p, "type", "xxx");
-    });
+        // var p = new DOMElement();
+        // p.addEventListener = false;
+        // addEvent(p, "type", "xxx");
+    });*/
 
     it("合并点击事件中的setState", async () => {
         var list = [];
@@ -372,7 +366,7 @@ describe("事件系统模块", function () {
                     {
                         path: "click"
                     },
-                    function() {
+                    function () {
                         list.push("click....");
                     }
                 );
@@ -380,7 +374,7 @@ describe("事件系统模块", function () {
                     {
                         path: "click2"
                     },
-                    function() {
+                    function () {
                         list.push("click2....");
                     }
                 );
@@ -393,15 +387,11 @@ describe("事件系统模块", function () {
             }
         }
 
-        ReactDOM.render(<App />, div, function() {
+        ReactDOM.render(<App />, div, function () {
             list.push("ReactDOM cb");
         });
-        await browser
-            .pause(100)
-            .click("#click2time")
-            .pause(100)
-            .$apply();
+        ReactTestUtils.Simulate.click(document.getElementById("click2time"));
 
         expect(list).toEqual(["render 111", "ReactDOM cb", "will update", "render click2", "did update", "click....", "click2...."]);
-    });*/
+    });
 });

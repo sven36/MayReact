@@ -1,10 +1,8 @@
 import {
-	extend
-} from "./util";
-import {
 	setDomAttr,
 	eventProxy,
-	removeDomAttr
+	removeDomAttr,
+	options
 } from './util';
 
 import {
@@ -12,16 +10,10 @@ import {
 	RefsQueue
 } from './Refs';
 
-// import {
-// 	diff
-// } from './may-dom/diff';
-// import {
-// 	renderComponent
-// } from './may-dom/component-recycle';
 
-export function render(vnode, container, merge) {
+export function render(vnode, container, callback) {
 	// return diff(merge, vnode, {}, false, container, false);
-	return renderByMay(vnode, container, merge);
+	return renderByMay(vnode, container, callback);
 }
 /**
  * render传入的Component都是一个function 该方法的原型对象上绑定了render方法
@@ -57,8 +49,11 @@ var renderByMay = function (vnode, container, callback) {
 		result.refs = rootDom.refs;
 	}
 	var q; //执行render过程中的回调函数lifeCycle ref等
-	while (q = lifeCycleQueue.shift()) {
+	while (q = callbackQueue.shift()) {
 		q();
+	}
+	if (callback) {//render的 callback
+		callback();
 	}
 	Refs.currentOwner = null;
 	container._lastVnode = vnode;
@@ -126,7 +121,7 @@ function mountDOM(vnode, isSVG) {
 		var owner = Refs.currentOwner;
 		var refInst = vnode._inst || vnode._hostNode || null;
 		if (typeof ref === 'function') {
-			lifeCycleQueue.push(ref.bind(owner, refInst));
+			callbackQueue.push(ref.bind(owner, refInst));
 		} else if (typeof ref === 'string') { //ref 为string
 			owner.refs[ref] = refInst;
 		}
@@ -152,14 +147,14 @@ function mountComposite(vnode, isSVG) {
 	}
 	var inst = vnode._inst || null;
 	if (inst && inst.componentDidMount) {
-		lifeCycleQueue.push(inst.componentDidMount.bind(inst));
+		callbackQueue.push(inst.componentDidMount.bind(inst));
 	}
 	if (vnode.ref) {
 		var ref = vnode.ref;
 		var owner = Refs.currentOwner;
 		var refInst = vnode._inst || vnode._hostNode || null;
 		if (typeof ref === 'function') {
-			lifeCycleQueue.push(ref.bind(owner, refInst));
+			callbackQueue.push(ref.bind(owner, refInst));
 		} else if (typeof ref === 'string') { //ref 为string
 			owner.refs[ref] = refInst;
 		}
@@ -178,7 +173,7 @@ var mountStrategy = {
 	5: updateComposite,
 	6: updateDOM,
 }
-var lifeCycleQueue = [];
+var callbackQueue = options.callbackQueue;
 
 function buildComponentFromVnode(vnode) {
 	var props = vnode.props;
@@ -246,7 +241,7 @@ export function reRender(instance) {
 	if (instance._mergeStateQueue) {
 		var updateState = {};
 		for (var i = 0; i < instance._mergeStateQueue.length; i++) {
-			updateState = extend(updateState, instance._mergeStateQueue[i]);
+			updateState = Object.assign(updateState, instance._mergeStateQueue[i]);
 		}
 		instance.state = updateState;
 	}
@@ -268,7 +263,7 @@ export function reRender(instance) {
 		instance.componentDidUpdate(props, instance.state, context);
 	}
 	var q;
-	while (q = lifeCycleQueue.shift()) {
+	while (q = callbackQueue.shift()) {
 		q();
 	}
 }
@@ -285,7 +280,7 @@ function updateDOM(prevVnode, newVnode) {
 
 	diffChildren(prevVnode, newVnode, hostNode);
 	if (newVnode.ref) {
-		lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
+		callbackQueue.push(newVnode.ref.bind(newVnode, newVnode));
 	}
 	return hostNode;
 }
@@ -320,10 +315,10 @@ function updateComposite(prevVnode, newVnode) {
 		disposeVnode(prevRenderedVnode);
 	}
 	if (instance.componentDidUpdate) {
-		lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
+		callbackQueue.push(instance.componentDidUpdate.bind(instance));
 	}
 	if (newVnode.ref) {
-		lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
+		callbackQueue.push(newVnode.ref.bind(newVnode, newVnode));
 	}
 	return hostNode;
 }
@@ -616,7 +611,7 @@ function diffProps(prev, now) {
 	}
 	if (ref) {
 		if (typeof ref === 'function') {
-			lifeCycleQueue.push(now.ref.bind(now, now));
+			callbackQueue.push(now.ref.bind(now, now));
 		}
 		if (typeof ref === 'string') {
 			if (Refs.currentOwner) {
