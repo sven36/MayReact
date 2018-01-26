@@ -10,6 +10,9 @@ var ReactDOM = {
 }
 React.render = render;
 
+// import React from "../../dist/ReactANU";
+// var ReactDOM = React;
+
 describe("生命周期例子", function() {
     // this.timeout(200000);
 
@@ -22,7 +25,7 @@ describe("生命周期例子", function() {
     afterEach(function() {
         body.removeChild(div);
     });
-    it("如果在componentDidMount中调用setState方法\n那么setState的所有回调，\n都会延迟到componentDidUpdate中执行", function() {
+    /*it("如果在componentDidMount中调用setState方法\n那么setState的所有回调，\n都会延迟到componentDidUpdate中执行", function() {
         var list = [];
         class App extends React.Component {
             constructor(props) {
@@ -77,8 +80,8 @@ describe("生命周期例子", function() {
         expect(list.join("-")).toBe(
             "bbb-did mount-will update-dddd-did update-1111-2222-3333"
         );
-    });
-    /*it("父组件没有DidMount之时被子组件在willMount钩子里调用其setState", function() {
+    });*/
+    it("父组件没有DidMount之时被子组件在willMount钩子里调用其setState", function() {
         var list = [];
         class App extends React.Component {
             constructor(props) {
@@ -132,7 +135,7 @@ describe("生命周期例子", function() {
         );
     });
 
-    it("父组件DidMount之时被子组件在componentWillReceiveProps钩子里调用其setState\n父组件的再次render会待到这次render完才调起", function() {
+    /*it("父组件DidMount之时被子组件在componentWillReceiveProps钩子里调用其setState\n父组件的再次render会待到这次render完才调起", function() {
         var list = [];
         class App extends React.Component {
             constructor(props) {

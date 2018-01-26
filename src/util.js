@@ -14,15 +14,18 @@ export var mayQueue = {
     callbackQueue: [], //回调队列 setState 中的事件回调
     lifeCycleQueue: [], //生命周期过程中的回调队列 DidUpdate DidMount ref回调
     isInEvent: false, //是否在触发事件 回调事件中的setstate合并触发
-    flushUpdates: flushUpdates,
-    renderInNextCycle: false //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理
+    flushUpdates: flushUpdates
 }
 
 function flushUpdates() {
     var c;
+    //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理 renderInNextCycle
+
     mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
     while (c = mayQueue.dirtyComponentsQueue.pop()) {
-        reRender(c);
+        if (!c._renderInNextCycle) {
+            reRender(c);
+        }
     }
 }
 
@@ -171,7 +174,7 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() {};
+    function b() { };
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;

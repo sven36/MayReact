@@ -69,10 +69,8 @@ function clearQueue() {
 			lifeCallback();
 		}
 	}
-	if (mayQueue.renderInNextCycle) {
-		//如果要在下一周期触发回调 
-		mayQueue.flushUpdates();
-	}
+	//如有有dirty Component diff
+	mayQueue.flushUpdates();
 	//再清空 setState传入的回调函数
 	if (mayQueue.callbackQueue) {
 		var callback;
@@ -197,6 +195,7 @@ var mountStrategy = {
 }
 //存放生命周期中的 DidMount DidUpdate以及ref回调
 var lifeCycleQueue = mayQueue.lifeCycleQueue;
+var mountOrder = 0;
 
 function buildComponentFromVnode(vnode) {
 	var props = vnode.props;
@@ -205,7 +204,6 @@ function buildComponentFromVnode(vnode) {
 	var context = vnode.context;
 	var inst, renderedVnode;
 	var Ctor = vnode.type;
-	var mountOrder = 0;
 	//Component  PureComponent
 	if (Ctor.prototype && Ctor.prototype.render) {
 		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
@@ -273,13 +271,7 @@ export function reRender(instance) {
 	var prevRenderedVnode = instance._renderedVnode;
 	var hostNode = prevRenderedVnode._hostNode;
 	mergeState(instance)
-	// if (instance._mergeStateQueue) {
-	// 	var updateState = Object.assign({}, prevState);
-	// 	for (var i = 0; i < instance._mergeStateQueue.length; i++) {
-	// 		updateState = Object.assign(updateState, instance._mergeStateQueue[i]);
-	// 	}
-	// 	instance.state = updateState;
-	// }
+	instance._lifeState = 2;
 	if (instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, instance.state, context) === false) {
 		return;
 	}

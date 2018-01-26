@@ -23,37 +23,27 @@ Component.prototype.setState = function (state, callback) {
         //如果在绑定事件中 触发setState合并state
         return;
     }
+    if (this._mergeStateQueue) {
+        this._mergeStateQueue.push(state);
+    } else {
+        this._mergeStateQueue = new Array(state);
+    }
     switch (lifeState) {
         case 0: //componentWillMount 触发setState会合并state
-            if (this._mergeStateQueue) {
-                this._mergeStateQueue.push(state);
-            } else {
-                this._mergeStateQueue = new Array(state);
-            }
-            this._dirty = false;
             return;
         case 1: //componentDidMount 触发setState会放到下一周期
-            if (this._mergeStateQueue) {
-                this._mergeStateQueue.push(state);
-            } else {
-                this._mergeStateQueue = new Array(state);
+            if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+                mayQueue.dirtyComponentsQueue.push(this);
             }
-            this._dirty = false;
-            mayQueue.renderInNextCycle = true;
             return;
         default:
-            if (this._mergeStateQueue) {
-                this._mergeStateQueue.push(state);
-            } else {
-                this._mergeStateQueue = new Array(state);
-            }
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
                 mayQueue.dirtyComponentsQueue.push(this);
             }
             break;
     }
 
-    // mayQueue.flushUpdates();
+    mayQueue.flushUpdates();
 }
 Component.prototype.forceUpdate = function (callback) {
     this._dirty = true;
