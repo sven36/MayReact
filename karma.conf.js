@@ -20,7 +20,8 @@ module.exports = function(config) {
     files: [
     //   'src/*.js',
       // 'test/**/*.js',
-      'test/**/event.spec.jsx',
+      // 'test/**/*.jsx',
+      'test/**/lifecycle.spec.jsx',
     ],
 
 

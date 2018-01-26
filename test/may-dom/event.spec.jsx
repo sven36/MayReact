@@ -1,30 +1,30 @@
-// import ReactTestUtils from "../../lib/ReactTestUtils";
-// import React from '../../src/May';
-// import { render, unmountComponentAtNode } from '../../src/MayDom'
-// var ReactDOM = {
-//     render: render,
-//     unmountComponentAtNode: unmountComponentAtNode
-// }
-// React.render = render;
-// import {
-//     dispatchEvent, SyntheticEvent, addEvent
-// } from '../../src/event';
+import ReactTestUtils from "../../lib/ReactTestUtils";
+import React from '../../src/May';
+import { render, unmountComponentAtNode } from '../../src/MayDom'
+var ReactDOM = {
+    render: render,
+    unmountComponentAtNode: unmountComponentAtNode
+}
+React.render = render;
+import {
+    dispatchEvent, SyntheticEvent, addEvent
+} from '../../src/event';
 
-import React from "../../dist/ReactANU";
-var ReactDOM = React;
-var ReactTestUtils = { Simulate: {} };
-"click,change,keyDown,keyUp,KeyPress,mouseDown,mouseUp,mouseMove".replace(/\w+/g, function (name) {
-    ReactTestUtils.Simulate[name] = function (node, opts) {
-        if (!node || node.nodeType !== 1) {
-            throw "第一个参数必须为元素节点";
-        }
-        var fakeNativeEvent = opts || {};
-        fakeNativeEvent.target = node;
-        fakeNativeEvent.simulated = true;
-        fakeNativeEvent.type = name.toLowerCase();
-        React.eventSystem.dispatchEvent(fakeNativeEvent, name.toLowerCase());
-    };
-});
+// import React from "../../dist/ReactANU";
+// var ReactDOM = React;
+// var ReactTestUtils = { Simulate: {} };
+// "click,change,keyDown,keyUp,KeyPress,mouseDown,mouseUp,mouseMove".replace(/\w+/g, function (name) {
+//     ReactTestUtils.Simulate[name] = function (node, opts) {
+//         if (!node || node.nodeType !== 1) {
+//             throw "第一个参数必须为元素节点";
+//         }
+//         var fakeNativeEvent = opts || {};
+//         fakeNativeEvent.target = node;
+//         fakeNativeEvent.simulated = true;
+//         fakeNativeEvent.type = name.toLowerCase();
+//         React.eventSystem.dispatchEvent(fakeNativeEvent, name.toLowerCase());
+//     };
+// });
 
 describe("事件系统模块", function () {
     // this.timeout(200000);
@@ -40,10 +40,10 @@ describe("事件系统模块", function () {
         div = document.createElement("div");
         body.appendChild(div);
     });
-    // afterEach(function () {
-    //     body.removeChild(div);
-    // });
-    /*it("事件与样式", async () => {
+    afterEach(function () {
+        body.removeChild(div);
+    });
+    it("事件与样式", async () => {
         class App extends React.Component {
             constructor() {
                 super();
@@ -338,7 +338,7 @@ describe("事件系统模块", function () {
         // var p = new DOMElement();
         // p.addEventListener = false;
         // addEvent(p, "type", "xxx");
-    });*/
+    });
 
     it("合并点击事件中的setState", async () => {
         var list = [];

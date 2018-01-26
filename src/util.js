@@ -4,11 +4,31 @@ import {
     eventHooks
 } from './event';
 
-export var options = {
-    callbackQueue: [],//生命周期过程中的回调队列
-    isInEvent: false//是否在触发事件 回调事件中的setstate合并触发
+import {
+    reRender
+} from './MayDom'
+
+//mayQueue 保存render过程中的各种事件队列 
+export var mayQueue = {
+    dirtyComponentsQueue: [], //setState 需要diff的component队列
+    callbackQueue: [], //回调队列 setState 中的事件回调
+    lifeCycleQueue: [], //生命周期过程中的回调队列 DidUpdate DidMount ref回调
+    isInEvent: false, //是否在触发事件 回调事件中的setstate合并触发
+    flushUpdates: flushUpdates,
+    renderInNextCycle: false //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理
 }
 
+function flushUpdates() {
+    var c;
+    mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
+    while (c = mayQueue.dirtyComponentsQueue.pop()) {
+        reRender(c);
+    }
+}
+
+function sortComponent(a, b) {
+    return a._mountOrder - b._mountOrder;
+}
 
 //有个trim方法 兼容性需要处理
 /**
@@ -23,31 +43,45 @@ export function setDomAttr(dom, props) {
         return;
     }
     for (const key in props) {
-        if (key !== 'children' && key !== 'className' && key !== 'key' && key !== 'style') {
-            if (!isEvent(key)) {
-                if (dom.nodeName !== 'INPUT') {
-                    if (props[key] !== null && props[key] !== false) {
-                        //attribute 永远是字符串
-                        dom.setAttribute(key, props[key] + '');
-                    } else {
-                        //如果是null 或 false 不必添加
-                        dom.removeAttribute(key);
+        if (!isEvent(key)) {
+            switch (key) {
+                case 'children':
+                case 'style':
+                case 'key':
+                    break;
+                case 'className':
+                    dom.setAttribute('class', props['className']);
+                    break;
+                case 'dangerouslySetInnerHTML':
+                    var html = props[key] && props[key].__html;
+                    dom.innerHTML = html;
+                    break;
+                default:
+                    if (dom.nodeName !== 'INPUT') {
+                        if (props[key] !== null && props[key] !== false) {
+                            //attribute 永远是字符串
+                            dom.setAttribute(key, props[key] + '');
+                        } else {
+                            //如果是null 或 false 不必添加
+                            dom.removeAttribute(key);
+                        }
+                    } else { //input value是property属性 直接赋值即可
+                        dom[key] = props[key];
                     }
-                } else { //input value是property属性 直接赋值即可
-                    dom[key] = props[key];
-                }
-            } else {
-                var e = key.substring(2).toLowerCase();
-                var eventName = getBrowserName(key);
-                addEvent(eventName);
-                //input的change等特殊事件需要特殊处理
-                var hook = eventHooks[eventName];
-                if (hook) {
-                    hook(dom, eventName);
-                }
-                var listener = dom._listener || (dom._listener = {});
-                listener[e] = props[key];
+                    break;
             }
+
+        } else {
+            var e = key.substring(2).toLowerCase();
+            var eventName = getBrowserName(key);
+            addEvent(eventName);
+            //input的change等特殊事件需要特殊处理
+            var hook = eventHooks[eventName];
+            if (hook) {
+                hook(dom, eventName);
+            }
+            var listener = dom._listener || (dom._listener = {});
+            listener[e] = props[key];
         }
     }
     if (props['style']) {
@@ -78,11 +112,6 @@ export function setDomAttr(dom, props) {
             }
         }
     }
-    if (props['className']) {
-        dom.setAttribute('class', props['className']);
-    }
-
-    // var currentVal = dom.getAttribute(name);
 
 }
 export function removeDomAttr(dom, props, key) {
@@ -93,6 +122,8 @@ export function removeDomAttr(dom, props, key) {
     }
     if (!isEvent(key)) {
         switch (key) {
+            case 'dangerouslySetInnerHTML':
+                dom.innerHTML = '';
             case 'className':
                 dom.removeAttribute('class');
                 break;
@@ -110,6 +141,16 @@ export function removeDomAttr(dom, props, key) {
     }
 
 
+}
+export function mergeState(instance) {
+    var prevState = instance.state;
+    if (instance._mergeStateQueue) {
+        var updateState = Object.assign({}, prevState);
+        for (var i = 0; i < instance._mergeStateQueue.length; i++) {
+            updateState = Object.assign(updateState, instance._mergeStateQueue[i]);
+        }
+        instance.state = updateState;
+    }
 }
 
 function isEvent(name) {
@@ -130,7 +171,7 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() { };
+    function b() {};
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;

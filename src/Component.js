@@ -1,5 +1,9 @@
-import { reRender } from './MayDom';
-import { dirtyComponents, flushUpdates } from './may-dom/render-queue';
+import {
+    reRender
+} from './MayDom';
+import {
+    mayQueue
+} from './util';
 
 
 export function Component(props, key, ref, context) {
@@ -11,20 +15,53 @@ export function Component(props, key, ref, context) {
 
 Component.prototype.setState = function (state, callback) {
     this._dirty = true;
-    if (this._mergeStateQueue) {
-        this._mergeStateQueue.push(state);
-    } else {
-        this._mergeStateQueue = new Array(state);
+    var lifeState = this._lifeState;
+    if (callback) {
+        mayQueue.callbackQueue.push(callback.bind(this));
     }
-    if (dirtyComponents.indexOf(this) === -1) {
-        dirtyComponents.push(this);
+    if (mayQueue.isInEvent) {
+        //如果在绑定事件中 触发setState合并state
+        return;
     }
-    flushUpdates(callback);
+    switch (lifeState) {
+        case 0: //componentWillMount 触发setState会合并state
+            if (this._mergeStateQueue) {
+                this._mergeStateQueue.push(state);
+            } else {
+                this._mergeStateQueue = new Array(state);
+            }
+            this._dirty = false;
+            return;
+        case 1: //componentDidMount 触发setState会放到下一周期
+            if (this._mergeStateQueue) {
+                this._mergeStateQueue.push(state);
+            } else {
+                this._mergeStateQueue = new Array(state);
+            }
+            this._dirty = false;
+            mayQueue.renderInNextCycle = true;
+            return;
+        default:
+            if (this._mergeStateQueue) {
+                this._mergeStateQueue.push(state);
+            } else {
+                this._mergeStateQueue = new Array(state);
+            }
+            if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+                mayQueue.dirtyComponentsQueue.push(this);
+            }
+            break;
+    }
+
+    // mayQueue.flushUpdates();
 }
 Component.prototype.forceUpdate = function (callback) {
     this._dirty = true;
-    if (dirtyComponents.indexOf(this) === -1) {
-        dirtyComponents.push(this);
+    if (callback) {
+        mayQueue.callbackQueue.push(callback.bind(this));
     }
-    flushUpdates(callback);
+    if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+        mayQueue.dirtyComponentsQueue.push(this);
+    }
+    mayQueue.flushUpdates();
 }

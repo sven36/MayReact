@@ -1,14 +1,13 @@
-import { options } from './util'
+import {
+    mayQueue
+} from './util';
+
 var globalEvent = {
 
 }
 export var eventHooks = {}; //用于在元素上绑定特定的事件
 var document = window.document;
 export var isTouch = "ontouchstart" in document;
-// var hook = eventPropHooks[_type];
-// if (hook && false === hook(e)) {
-//     return;
-// }
 
 export function dispatchEvent(e, type, end) {
     e = new SyntheticEvent(e);
@@ -17,7 +16,7 @@ export function dispatchEvent(e, type, end) {
     }
     var _type = e.type;
     //全局的一个标识  在事件中setState应当合并
-    options.isInEvent = true;
+    mayQueue.isInEvent = true;
     //onClickCapture 在捕获阶段触发
     var captured = _type + 'capture';
     var eventCollect = bubbleEvent(e.target, end || document);
@@ -29,8 +28,9 @@ export function dispatchEvent(e, type, end) {
         //触发冒泡
         triggerEventFlow(e, eventCollect.reverse(), _type);
     }
-    options.isInEvent = false;
-
+    mayQueue.isInEvent = false;
+    //在事件中合并state之后 触发reRender
+    mayQueue.flushUpdates();
 }
 /**
  * 自己冒泡,收集冒泡过程中的所有事件
@@ -155,7 +155,7 @@ var eventProto = (SyntheticEvent.prototype = {
             e.preventDefault();
         }
     },
-    fixHooks: function () { },
+    fixHooks: function () {},
     stopPropagation: function () {
         var e = this.nativeEvent || {};
         e.cancleBubble = this._stopPropagation = true;
@@ -182,7 +182,7 @@ function isFn(obj) {
     return Object.prototype.toString.call(obj) === "[object Function]";
 }
 
-function noop() { }
+function noop() {}
 
 /* IE6-11 chrome mousewheel wheelDetla 下 -120 上 120
             firefox DOMMouseScroll detail 下3 上-3
