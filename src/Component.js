@@ -2,7 +2,8 @@ import {
     reRender
 } from './MayDom';
 import {
-    mayQueue
+    mayQueue,
+    mergeState
 } from './util';
 
 
@@ -14,24 +15,36 @@ export function Component(props, key, ref, context) {
 }
 
 Component.prototype.setState = function (state, callback) {
-    this._dirty = true;
     var lifeState = this._lifeState;
+
     if (callback) {
-        mayQueue.callbackQueue.push(callback.bind(this));
-    }
-    if (mayQueue.isInEvent) {
-        //如果在绑定事件中 触发setState合并state
-        return;
+        //回调队列调用之前也许sort
+        callback = callback.bind(this);
+        callback._mountOrder = this._mountOrder;
+        mayQueue.callbackQueue.push(callback);
     }
     if (this._mergeStateQueue) {
         this._mergeStateQueue.push(state);
     } else {
         this._mergeStateQueue = new Array(state);
     }
+    if (mayQueue.isInEvent) {
+        //如果在绑定事件中 触发setState合并state
+        if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+            mayQueue.dirtyComponentsQueue.push(this);
+        }
+        return;
+    }
     switch (lifeState) {
-        case 0: //componentWillMount 触发setState会合并state
+        case 'beforeComponentWillUnmount': //componentWillUnmount 触发setState忽略
             return;
-        case 1: //componentDidMount 触发setState会放到下一周期
+        case 'beforeComponentWillMount': //componentWillMount 触发setState会合并state
+            this.state = mergeState(this);
+            return;
+        case 'beforeComponentRerender': //子组件componentWillReceiveProps 调用父组件的setState 触发setState会放到下一周期
+            this._renderInNextCycle = true;
+        case 'afterComponentWillMount': //子组件在ComponentWillMount中调用父组件的setState
+        case 'beforeComponentDidMount': //componentDidMount 触发setState会放到下一周期beforeComponentRerender
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
                 mayQueue.dirtyComponentsQueue.push(this);
             }
@@ -43,15 +56,15 @@ Component.prototype.setState = function (state, callback) {
             break;
     }
 
-    mayQueue.flushUpdates();
+    mayQueue.clearQueue();
 }
 Component.prototype.forceUpdate = function (callback) {
-    this._dirty = true;
+    this._forceUpdate = true;
     if (callback) {
         mayQueue.callbackQueue.push(callback.bind(this));
     }
     if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
         mayQueue.dirtyComponentsQueue.push(this);
     }
-    mayQueue.flushUpdates();
+
 }

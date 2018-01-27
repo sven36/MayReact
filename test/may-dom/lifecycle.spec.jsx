@@ -2,30 +2,43 @@
 import ReactTestUtils from "../../lib/ReactTestUtils";
 
 import React from '../../src/May';
-import { render, unmountComponentAtNode,findDOMNode } from '../../src/MayDom'
+import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom'
 var ReactDOM = {
     render: render,
     unmountComponentAtNode: unmountComponentAtNode,
-    findDOMNode:findDOMNode
+    findDOMNode: findDOMNode
 }
 React.render = render;
 
 // import React from "../../dist/ReactANU";
 // var ReactDOM = React;
+// var ReactTestUtils = { Simulate: {} };
+// "click,change,keyDown,keyUp,KeyPress,mouseDown,mouseUp,mouseMove".replace(/\w+/g, function (name) {
+//     ReactTestUtils.Simulate[name] = function (node, opts) {
+//         if (!node || node.nodeType !== 1) {
+//             throw "第一个参数必须为元素节点";
+//         }
+//         var fakeNativeEvent = opts || {};
+//         fakeNativeEvent.target = node;
+//         fakeNativeEvent.simulated = true;
+//         fakeNativeEvent.type = name.toLowerCase();
+//         React.eventSystem.dispatchEvent(fakeNativeEvent, name.toLowerCase());
+//     };
+// });
 
-describe("生命周期例子", function() {
+describe("生命周期例子", function () {
     // this.timeout(200000);
 
     var body = document.body,
         div;
-    beforeEach(function() {
+    beforeEach(function () {
         div = document.createElement("div");
         body.appendChild(div);
     });
-    afterEach(function() {
+    afterEach(function () {
         body.removeChild(div);
     });
-    /*it("如果在componentDidMount中调用setState方法\n那么setState的所有回调，\n都会延迟到componentDidUpdate中执行", function() {
+    it("如果在componentDidMount中调用setState方法\n那么setState的所有回调，\n都会延迟到componentDidUpdate中执行", function() {
         var list = [];
         class App extends React.Component {
             constructor(props) {
@@ -80,8 +93,8 @@ describe("生命周期例子", function() {
         expect(list.join("-")).toBe(
             "bbb-did mount-will update-dddd-did update-1111-2222-3333"
         );
-    });*/
-    it("父组件没有DidMount之时被子组件在willMount钩子里调用其setState", function() {
+    });
+    it("父组件没有DidMount之时被子组件在willMount钩子里调用其setState", function () {
         var list = [];
         class App extends React.Component {
             constructor(props) {
@@ -135,7 +148,7 @@ describe("生命周期例子", function() {
         );
     });
 
-    /*it("父组件DidMount之时被子组件在componentWillReceiveProps钩子里调用其setState\n父组件的再次render会待到这次render完才调起", function() {
+    it("父组件DidMount之时被子组件在componentWillReceiveProps钩子里调用其setState\n父组件的再次render会待到这次render完才调起", function () {
         var list = [];
         class App extends React.Component {
             constructor(props) {
@@ -181,7 +194,7 @@ describe("生命周期例子", function() {
                         {
                             aaa: "child call app render " + ++a
                         },
-                        function() {
+                        function () {
                             list.push("componentWillReceiveProps 1");
                         }
                     );
@@ -189,7 +202,7 @@ describe("生命周期例子", function() {
                         {
                             aaa: "child call app render " + ++a
                         },
-                        function() {
+                        function () {
                             list.push("componentWillReceiveProps 2");
                         }
                     );
@@ -204,7 +217,6 @@ describe("生命周期例子", function() {
             }
         }
         React.render(<App />, div);
-
         var list2 = [
             "app will mount",
             "app render",
@@ -660,5 +672,5 @@ describe("生命周期例子", function() {
             "b的回调",
             "c的回调"
         ]);
-    });*/
+    });//*/
 });

@@ -6,8 +6,7 @@ import {
 } from './util';
 
 import {
-	Refs,
-	RefsQueue
+	Refs
 } from './Refs';
 
 
@@ -48,36 +47,13 @@ var renderByMay = function (vnode, container, callback) {
 		result.refs = rootDom.refs;
 	}
 	//执行render过程中的回调函数lifeCycle ref等
-	clearQueue();
+	mayQueue.clearQueue();
 	if (callback) { //render的 callback
 		callback();
 	}
 	Refs.currentOwner = null;
 	container._lastVnode = vnode;
 	return result;
-}
-
-/**
- * 清空回调队列
- * @param {*} mayQueue 
- */
-function clearQueue() {
-	//先清空 生命周期 ref 的回调函数
-	if (mayQueue.lifeCycleQueue) {
-		var lifeCallback;
-		while (lifeCallback = mayQueue.lifeCycleQueue.shift()) {
-			lifeCallback();
-		}
-	}
-	//如有有dirty Component diff
-	mayQueue.flushUpdates();
-	//再清空 setState传入的回调函数
-	if (mayQueue.callbackQueue) {
-		var callback;
-		while (callback = mayQueue.callbackQueue.shift()) {
-			callback();
-		}
-	}
 }
 
 function mountDOM(vnode, isSVG) {
@@ -167,6 +143,7 @@ function mountComposite(vnode, isSVG) {
 	}
 	var inst = vnode._inst || null;
 	if (inst && inst.componentDidMount) {
+		inst._lifeState = 'beforeComponentDidMount'
 		lifeCycleQueue.push(inst.componentDidMount.bind(inst));
 	}
 	if (vnode.ref) {
@@ -210,14 +187,15 @@ function buildComponentFromVnode(vnode) {
 		inst = new Ctor(props, key, ref, context);
 		inst._mountOrder = mountOrder;
 		mountOrder++;
-		//_lifeState来控制生命周期中调用setState的作用
-		//_lifeState为0 刚创建instance componentWillMount调用setState合并state即可
-		inst._lifeState = 0;
-		if (inst.componentWillMount) inst.componentWillMount();
-		//执行完 componentWillMount _lifeState为1
-		inst._lifeState = 1;
+		if (inst.componentWillMount) {
+			//_lifeState来控制生命周期中调用setState的作用
+			//刚创建instance componentWillMount调用setState合并state即可
+			inst._lifeState = 'beforeComponentWillMount';
+			inst.componentWillMount();
+			inst._lifeState = 'afterComponentWillMount';
+		}
 		if (inst._mergeStateQueue) {
-			mergeState(inst);
+			inst.state = mergeState(inst);
 		}
 		renderedVnode = inst.render(props, context);
 		if (inst.getChildContext) {
@@ -270,16 +248,15 @@ export function reRender(instance) {
 	var prevState = instance.state;
 	var prevRenderedVnode = instance._renderedVnode;
 	var hostNode = prevRenderedVnode._hostNode;
-	mergeState(instance)
-	instance._lifeState = 2;
-	if (instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, instance.state, context) === false) {
+	var newState = mergeState(instance);
+	//forceUpdate时 忽略shouldComponentUpdate
+	if (!instance._forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, newState, context) === false) {
 		return;
+	} else if (instance.componentWillUpdate) {
+		instance.componentWillUpdate(props, newState, context);
 	}
-
-	if (instance.componentWillUpdate) {
-		instance.componentWillUpdate(props, instance.state, context);
-	}
-
+	instance.state = newState;
+	instance._lifeState = 'beforeComponentRerender';
 	var updatedVnode = instance.render(props, context);
 	instance._renderedVnode = updatedVnode;
 	if (!updatedVnode) {
@@ -297,14 +274,17 @@ export function reRender(instance) {
 	}
 	instance._renderedVnode._hostNode = hostNode;
 	updatedVnode._vChildren = transformChildren(updatedVnode, hostNode);
-
+	//执行完 componentWillUpdate 
+	instance._lifeState = 'beforeComponentDidUpdate';
 	if (instance.componentDidUpdate) {
-		instance.componentDidUpdate(props, instance.state, context);
+		if (instance._renderInNextCycle) {
+			instance.componentDidUpdate();
+		} else {
+			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
+		}
 	}
-	var q;
-	while (q = lifeCycleQueue.shift()) {
-		q();
-	}
+	//执行完 componentDidUpdate
+	instance._lifeState = 'afterComponentDidUpdate';
 }
 
 function updateDOM(prevVnode, newVnode) {
@@ -327,7 +307,7 @@ function updateComposite(prevVnode, newVnode) {
 	if (prevVnode.ref && typeof prevVnode.ref === 'function') {
 		prevVnode.ref(null);
 	}
-	var hostNode = prevVnode._renderedVnode._hostNode;
+	var hostNode = prevVnode._hostNode || prevVnode._renderedVnode._hostNode;
 	var instance = prevVnode._inst;
 	var isEmpty = false;
 	var newDom;
@@ -335,20 +315,29 @@ function updateComposite(prevVnode, newVnode) {
 		//empty代表prevVnode为null
 		isEmpty = true;
 	}
-	if (prevVnode !== newVnode) {
-		if (instance.componentWillReceiProps) {
-			instance.componentWillReceiProps(newVnode.props, newVnode.context);
+	instance._lifeState = 'beforeComponentWillReceiveProps';
+	if (prevVnode !== newVnode || prevVnode.context !== newVnode.context) {
+		if (instance.componentWillReceiveProps) {
+			instance.componentWillReceiveProps(newVnode.props, newVnode.context);
 		}
 		instance.props = newVnode.props;
 	}
+	var newState = mergeState(instance);
+	instance._lifeState = 'beforeShouldComponentUpdate';
+	//shouldComponentUpdate 返回false 则不进行子组件渲染
+	if (!instance._forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, newState, context) === false) {
+		return hostNode;
+	} else if (instance.componentWillUpdate) {
+		instance.componentWillUpdate();
+	}
+	instance.state = newState;
 	if (!Refs.currentOwner) {
 		Refs.currentOwner = instance;
 		Refs.currentOwner.refs = {};
 	}
-	if (instance.componentWillUpdate) {
-		instance.componentWillUpdate();
-	}
+
 	var prevRenderedVnode = prevVnode._renderedVnode;
+	instance._lifeState = 'beforeComponentRerender';
 	var newRenderedVnode = instance.render();
 	newVnode._renderedVnode = newRenderedVnode;
 	newVnode._inst = instance;
@@ -366,6 +355,7 @@ function updateComposite(prevVnode, newVnode) {
 		disposeVnode(prevRenderedVnode);
 		disposeDom(hostNode);
 	}
+	instance._lifeState = 'beforeComponentDidUpdate';
 	if (instance.componentDidUpdate) {
 		lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
 	}
@@ -436,11 +426,11 @@ function diffChildren(prevVnode, updatedVnode, parent) {
 			if (prevK && prevK.length > 0) { //试试=0 else
 				for (var _i = 0; _i < prevK.length; _i++) {
 					var vnode = prevK[_i];
-					if (c.type === vnode.type && !vnode._reused) {
+					if (c.type === vnode.type && !vnode._used) {
 						c._hostNode = vnode._hostNode;
 						c._inst = vnode._inst;
 						c._prevVnode = vnode;
-						vnode._reused = true;
+						vnode._used = true;
 						c._reused = true;
 						break;
 					}
@@ -454,7 +444,7 @@ function diffChildren(prevVnode, updatedVnode, parent) {
 	for (var name in prevChildren) {
 		var _c = prevChildren[name];
 		for (let j = 0; j < _c.length; j++) {
-			if (!_c[j]._reused) _unMountChildren.push(_c[j]);
+			if (!_c[j]._used) _unMountChildren.push(_c[j]);
 		}
 	}
 	flushMounts(_mountChildren, parent);
@@ -494,7 +484,9 @@ function flushMounts(newChildren, parent) {
 					if (child.type !== '#text') {
 						diffProps(child._prevVnode, child);
 					} else { //text
-						child._hostNode.nodeValue = child.value;
+						if (child._hostNode.nodeValue !== child.value) {
+							child._hostNode.nodeValue = child.value;
+						}
 					}
 				} else {
 					if (child.type !== '#text') {
@@ -547,6 +539,11 @@ function transformChildren(renderedVnode, parent) {
 		var __type = typeof c;
 		switch (__type) {
 			case 'object':
+				if (c._reused) {
+					//如果该组件 diff 两次 第一次vnode重用之后_reused为true
+					//生成vchildren时需要其为false 否则第二次diff
+					c._reused = false;
+				}
 				if (c.type) {
 					var _key = genKey(c);
 					if (!result[_key]) {
@@ -621,6 +618,8 @@ function disposeVnode(vnode) {
 	}
 	if (vnode._inst) {
 		if (vnode._inst.componentWillUnmount) {
+			//componentWillUnmount中触发setState 忽略
+			vnode._inst._lifeState = 'beforeComponentWillUnmount';
 			vnode._inst.componentWillUnmount();
 		}
 		vnode._inst.refs = null;

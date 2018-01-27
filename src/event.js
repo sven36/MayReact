@@ -30,7 +30,7 @@ export function dispatchEvent(e, type, end) {
     }
     mayQueue.isInEvent = false;
     //在事件中合并state之后 触发reRender
-    mayQueue.flushUpdates();
+    mayQueue.clearQueue();
 }
 /**
  * 自己冒泡,收集冒泡过程中的所有事件
@@ -155,7 +155,7 @@ var eventProto = (SyntheticEvent.prototype = {
             e.preventDefault();
         }
     },
-    fixHooks: function () {},
+    fixHooks: function () { },
     stopPropagation: function () {
         var e = this.nativeEvent || {};
         e.cancleBubble = this._stopPropagation = true;
@@ -182,7 +182,7 @@ function isFn(obj) {
     return Object.prototype.toString.call(obj) === "[object Function]";
 }
 
-function noop() {}
+function noop() { }
 
 /* IE6-11 chrome mousewheel wheelDetla 下 -120 上 120
             firefox DOMMouseScroll detail 下3 上-3

@@ -34,7 +34,14 @@ export function createElement(type, config, children) {
             }
         }
     }
-
+    var defaultProps = type.defaultProps;
+    if (defaultProps) {
+        for (var propName in defaultProps) {
+            if (props[propName] === void 666) {
+                props[propName] = defaultProps[propName];
+            }
+        }
+    }
     if (len > 1) {
         var array = new Array();
         for (var i = 0; i < len; i++) {
