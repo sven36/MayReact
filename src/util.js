@@ -35,6 +35,9 @@ function flushUpdates() {
     mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
     while (c = mayQueue.dirtyComponentsQueue.shift()) {
         reRender(c);
+        if (c) {
+            c._lifeState = 'reRenderComplete';
+        }
     }
     //ComponentDidUpdate
     clearLifeCycleQueue();
@@ -62,6 +65,11 @@ function clearCallbackQueue() {
 
 function sortComponent(a, b) {
     return a._mountOrder - b._mountOrder;
+}
+
+export var FormElement={
+    input:1,
+    select:1,
 }
 
 //有个trim方法 兼容性需要处理

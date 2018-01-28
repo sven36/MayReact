@@ -2,7 +2,8 @@ import {
 	setDomAttr,
 	removeDomAttr,
 	mergeState,
-	mayQueue
+	mayQueue,
+	FormElement
 } from './util';
 
 import {
@@ -41,7 +42,6 @@ var renderByMay = function (vnode, container, callback) {
 			return;
 		}
 	}
-
 	result = vnode._inst || container;
 	if (!vnode._inst && rootDom) {
 		result.refs = rootDom.refs;
@@ -57,7 +57,8 @@ var renderByMay = function (vnode, container, callback) {
 }
 
 function mountDOM(vnode, isSVG) {
-	var hostNode = !isSVG ? document.createElement(vnode.type) : document.createElementNS("http://www.w3.org/2000/svg", vnode.type);
+	var vtype = vnode.type;
+	var hostNode = !isSVG ? document.createElement(vtype) : document.createElementNS("http://www.w3.org/2000/svg", vnode.type);
 	if (!Refs.currentOwner) {
 		Refs.currentOwner = hostNode;
 		hostNode.refs = {};
@@ -111,7 +112,22 @@ function mountDOM(vnode, isSVG) {
 		}
 		vnode._vChildren = transformChildren(vnode, hostNode);
 	}
+	//如果是受控组件input select之类需要特殊处理下
+	if (FormElement[vtype]) {
+		if (vtype === 'select') {
+			if (vnode.props['value']) {
+				var _val = vnode.props['value'];
+				var _optionsChilds = [].slice.call(hostNode.childNodes);
+				if (_optionsChilds) {
+					for (var k = 0; k < _optionsChilds.length; k++) {
+						var oChild = _optionsChilds[k];
+						oChild.value !== _val ? oChild.selected = false : oChild.selected = true;
+					}
+				}
 
+			}
+		}
+	}
 	if (vnode.ref) {
 		var ref = vnode.ref;
 		var owner = Refs.currentOwner;
@@ -237,11 +253,6 @@ function getContextByTypes(context, typeCheck) {
 	return ret;
 }
 
-// function doRender() {
-// 	return this.constructor.apply(this, arguments);
-// }
-
-
 export function reRender(instance) {
 	var props = instance.props;
 	var context = instance.context;
@@ -274,17 +285,19 @@ export function reRender(instance) {
 	}
 	instance._renderedVnode._hostNode = hostNode;
 	updatedVnode._vChildren = transformChildren(updatedVnode, hostNode);
-	//执行完 componentWillUpdate 
-	instance._lifeState = 'beforeComponentDidUpdate';
+
 	if (instance.componentDidUpdate) {
+		//执行完 componentWillUpdate 
+		instance._lifeState = 'beforeComponentDidUpdate';
 		if (instance._renderInNextCycle) {
 			instance.componentDidUpdate();
+			//执行完 componentDidUpdate
+			instance._lifeState = 'afterComponentDidUpdate';
 		} else {
 			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
 		}
 	}
-	//执行完 componentDidUpdate
-	instance._lifeState = 'afterComponentDidUpdate';
+
 }
 
 function updateDOM(prevVnode, newVnode) {
@@ -355,8 +368,8 @@ function updateComposite(prevVnode, newVnode) {
 		disposeVnode(prevRenderedVnode);
 		disposeDom(hostNode);
 	}
-	instance._lifeState = 'beforeComponentDidUpdate';
 	if (instance.componentDidUpdate) {
+		instance._lifeState = 'beforeComponentDidUpdate';
 		lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
 	}
 	if (newVnode.ref) {

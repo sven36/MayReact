@@ -129,7 +129,7 @@ describe('node模块', function () {
         expect(index).toBe(2)
 
     })
-    /*it('下拉菜单的选择', async () => {
+    it('下拉菜单的选择', async () => {
 
         class Select extends React.Component {
             constructor() {
@@ -233,17 +233,15 @@ describe('node模块', function () {
         }
         ;
         var s = React.render(<Select />, div)
-        await browser.pause(100).$apply()
 
-        expect(s.updater._hostNode.children[0].text).toBe('北京')
-        expect(s.updater._hostNode.children[1].text).toBe('杭州')
-        expect(s.updater._hostNode.children[2].text).toBe('南京')
+        expect(s._renderedVnode._hostNode.children[0].text).toBe('北京')
+        expect(s._renderedVnode._hostNode.children[1].text).toBe('杭州')
+        expect(s._renderedVnode._hostNode.children[2].text).toBe('南京')
         s.change()
-        await browser.pause(100).$apply()
 
-        expect(s.updater._hostNode.children[0].text).toBe('杭州')
-        expect(s.updater._hostNode.children[1].text).toBe('南京')
-        expect(s.updater._hostNode.children[2].text).toBe('北京')
+        expect(s._renderedVnode._hostNode.children[0].text).toBe('杭州')
+        expect(s._renderedVnode._hostNode.children[1].text).toBe('南京')
+        expect(s._renderedVnode._hostNode.children[2].text).toBe('北京')
 
 
     })
@@ -296,21 +294,20 @@ describe('node模块', function () {
 
 
         var s = React.render(<Radio />, div)
-        await browser.pause(100).$apply()
 
-        expect(s.updater._hostNode.children[0].checked).toBe(false)
-        expect(s.updater._hostNode.children[1].checked).toBe(true)
-        expect(s.updater._hostNode.children[2].checked).toBe(false)
-        await browser.click('#radio3').pause(100).$apply()
+        expect(s._renderedVnode._hostNode.children[0].checked).toBe(false)
+        expect(s._renderedVnode._hostNode.children[1].checked).toBe(true)
+        expect(s._renderedVnode._hostNode.children[2].checked).toBe(false)
+        // await browser.click('#radio3').pause(100).$apply()
 
-        expect(s.updater._hostNode.children[0].checked).toBe(false)
-        expect(s.updater._hostNode.children[1].checked).toBe(false)
-        expect(s.updater._hostNode.children[2].checked).toBe(true)
+        // expect(s.updater._hostNode.children[0].checked).toBe(false)
+        // expect(s.updater._hostNode.children[1].checked).toBe(false)
+        // expect(s.updater._hostNode.children[2].checked).toBe(true)
 
 
     })
 
-    it('测试input元素的oninput事件', async () => {
+    /*it('测试input元素的oninput事件', async () => {
 
         var values = ['x', 'xx', 'xxx', 'xxxx']
         var el = ''
