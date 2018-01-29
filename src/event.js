@@ -116,10 +116,6 @@ export function SyntheticEvent(event) {
     this.timeStamp = new Date() - 0;
     this.nativeEvent = event;
 }
-if (isTouch) {
-    eventHooks.click = noop;
-    eventHooks.clickcapture = noop;
-}
 
 export function createHandle(name, fn) {
     return function (e) {

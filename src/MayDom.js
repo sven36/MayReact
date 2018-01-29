@@ -1,10 +1,12 @@
 import {
-	setDomAttr,
-	removeDomAttr,
 	mergeState,
-	mayQueue,
-	FormElement
+	mayQueue
 } from './util';
+
+import {
+	diffProps,
+	FormElement
+} from './diffProps'
 
 import {
 	Refs
@@ -63,8 +65,8 @@ function mountDOM(vnode, isSVG) {
 		Refs.currentOwner = hostNode;
 		hostNode.refs = {};
 	}
-	setDomAttr(hostNode, vnode.props);
 	vnode._hostNode = hostNode;
+	diffProps(null, vnode);
 	var children = vnode.props.children || null;
 	if (children && !Array.isArray(children)) {
 		children = [children];
@@ -156,6 +158,9 @@ function mountComposite(vnode, isSVG) {
 		renderedVnode._hostNode = hostNode;
 	} else { //render 返回null
 		hostNode = document.createComment('empty');
+		if (vnode._inst) { //用于isMounted 判断 即使是null
+			vnode._inst._hostNode = hostNode;
+		}
 	}
 	var inst = vnode._inst || null;
 	if (inst && inst.componentDidMount) {
@@ -338,7 +343,7 @@ function updateComposite(prevVnode, newVnode) {
 	var newState = mergeState(instance);
 	instance._lifeState = 'beforeShouldComponentUpdate';
 	//shouldComponentUpdate 返回false 则不进行子组件渲染
-	if (!instance._forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, newState, context) === false) {
+	if (!instance._forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(newVnode.props, newState, newVnode.context) === false) {
 		return hostNode;
 	} else if (instance.componentWillUpdate) {
 		instance.componentWillUpdate();
@@ -396,7 +401,7 @@ function mayUpdate(prevVnode, newVnode, container) {
 	}
 }
 
-function diffChildren(prevVnode, updatedVnode, parent) {
+export function diffChildren(prevVnode, updatedVnode, parent) {
 	var prevChildren = prevVnode._vChildren || null;
 	var newRenderedChild = updatedVnode.props.children;
 	if (newRenderedChild && !Array.isArray(newRenderedChild)) {
@@ -625,6 +630,7 @@ function transformChildren(renderedVnode, parent) {
 }
 
 function disposeVnode(vnode) {
+	var children = vnode.props && vnode.props.children;
 	if (vnode.ref && typeof vnode.ref === 'function') {
 		vnode.ref(null);
 		vnode.ref = null;
@@ -642,6 +648,17 @@ function disposeVnode(vnode) {
 		disposeVnode(vnode._renderedVnode);
 		vnode._renderedVnode = null;
 	}
+	if (children && children.length > 0) {
+		for (var i = 0; i < children.length; i++) {
+			var c = children[i];
+			var type = typeof c;
+			if (c && type === 'object') {
+				disposeVnode(c);
+			}
+		}
+	} else if (children) {
+		disposeVnode(children);
+	}
 	if (vnode._prevVnode) {
 		vnode._prevVnode = null;
 	}
@@ -655,54 +672,6 @@ function disposeDom(dom) {
 	if (dom.parentNode) {
 		dom.parentNode.removeChild(dom);
 		dom = null;
-	}
-}
-
-function diffProps(prev, now) {
-	var prevProps = prev.props;
-	var props = now.props;
-	var hostNode = now._hostNode;
-	for (var name in props) {
-		if (name !== 'children' && !(props[name] === prevProps[name])) {
-			setDomAttr(hostNode, props);
-			break;
-		}
-	}
-	for (var prop in prevProps) {
-		if (prop !== 'children' && (props[prop] === void 666)) {
-			removeDomAttr(hostNode, prevProps, prop);
-		}
-	}
-	var _ref = prev.ref;
-	var ref = now.ref;
-	if (_ref) {
-		if (typeof _ref === 'function') {
-			prev.ref(null);
-			prev.ref = null;
-		} else {
-			if (Refs.currentOwner && Refs.currentOwner.refs[_ref]) {
-				Refs.currentOwner.refs[_ref] = null;
-			}
-		}
-	}
-	if (ref) {
-		if (typeof ref === 'function') {
-			lifeCycleQueue.push(now.ref.bind(now, now));
-		}
-		if (typeof ref === 'string') {
-			if (Refs.currentOwner) {
-				if (Refs.currentOwner.refs) {
-					Refs.currentOwner.refs[ref] = hostNode;
-				} else {
-					Refs.currentOwner.refs = {};
-					Refs.currentOwner.refs[ref] = hostNode;
-				}
-			}
-		}
-	}
-
-	if (props['children']) {
-		diffChildren(prev, now, now._hostNode);
 	}
 }
 

@@ -61,7 +61,7 @@ describe('ReactChildReconciler', () => {
     };
   }
 
-  /*it('warns for duplicated array keys', () => {
+  it('warns for duplicated array keys', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {
@@ -72,13 +72,6 @@ describe('ReactChildReconciler', () => {
 
     ReactTestUtils.renderIntoDocument(<Component />);
 
-    expect(console.error.calls.count()).toBe(1);
-    expect(console.error.calls.argsFor(0)[0]).toContain(
-      'Keys should be unique so that components maintain their identity ' +
-        'across updates. Non-unique keys may cause children to be ' +
-        'duplicated and/or omitted — the behavior is unsupported and ' +
-        'could change in a future version.',
-    );
   });
 
   it('warns for duplicated array keys with component stack info', () => {
@@ -116,20 +109,6 @@ describe('ReactChildReconciler', () => {
 
     ReactTestUtils.renderIntoDocument(<GrandParent />);
 
-    expect(console.error.calls.count()).toBe(1);
-    expect(
-      normalizeCodeLocInfo(console.error.calls.argsFor(0)[0]),
-    ).toContain(
-      'Encountered two children with the same key, `1`. ' +
-        'Keys should be unique so that components maintain their identity ' +
-        'across updates. Non-unique keys may cause children to be ' +
-        'duplicated and/or omitted — the behavior is unsupported and ' +
-        'could change in a future version.',
-      '    in div (at **)\n' +
-        '    in Component (at **)\n' +
-        '    in Parent (at **)\n' +
-        '    in GrandParent (at **)',
-    );
   });
 
   it('warns for duplicated iterable keys', () => {
@@ -143,16 +122,9 @@ describe('ReactChildReconciler', () => {
 
     ReactTestUtils.renderIntoDocument(<Component />);
 
-    expect(console.error.calls.count()).toBe(1);
-    expect(console.error.calls.argsFor(0)[0]).toContain(
-      'Keys should be unique so that components maintain their identity ' +
-        'across updates. Non-unique keys may cause children to be ' +
-        'duplicated and/or omitted — the behavior is unsupported and ' +
-        'could change in a future version.',
-    );
-  });*/
+  });
 
-  /*it('warns for duplicated iterable keys with component stack info', () => {
+  it('warns for duplicated iterable keys with component stack info', () => {
     spyOn(console, 'error');
 
     class Component extends React.Component {
@@ -175,19 +147,5 @@ describe('ReactChildReconciler', () => {
 
     ReactTestUtils.renderIntoDocument(<GrandParent />);
 
-    expectDev(console.error.calls.count()).toBe(1);
-    expectDev(
-      normalizeCodeLocInfo(console.error.calls.argsFor(0)[0]),
-    ).toContain(
-      'Encountered two children with the same key, `1`. ' +
-        'Keys should be unique so that components maintain their identity ' +
-        'across updates. Non-unique keys may cause children to be ' +
-        'duplicated and/or omitted — the behavior is unsupported and ' +
-        'could change in a future version.',
-      '    in div (at **)\n' +
-        '    in Component (at **)\n' +
-        '    in Parent (at **)\n' +
-        '    in GrandParent (at **)',
-    );
-  });*/
+  });
 });

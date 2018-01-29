@@ -7,5 +7,8 @@ export const Children = {
             return child[0];
         }
         throw new Error("expect only one child");
+    },
+    forEach:function (children) {
+        
     }
 }

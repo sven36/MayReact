@@ -68,15 +68,18 @@ Component.prototype.forceUpdate = function (callback) {
     }
     var lifeState = this._lifeState;
     switch (lifeState) {
-        case 'beforeComponentWillUnmount': //componentWillUnmount 触发setState忽略
-        case 'beforeComponentWillMount': //componentWillMount 触发setState会合并state
-        case 'beforeComponentRerender': //子组件componentWillReceiveProps 调用父组件的setState 触发setState会放到下一周期
-        case 'afterComponentWillMount': //子组件在ComponentWillMount中调用父组件的setState
-        case 'beforeComponentDidMount': //componentDidMount 触发setState会放到下一周期beforeComponentRerender
+        case 'beforeComponentWillUnmount': //componentWillUnmount 触发forceUpdate
+        case 'beforeComponentWillMount': //componentWillMount 触发forceUpdate会合并state
+        case 'beforeComponentRerender': //子组件componentWillReceiveProps 触发forceUpdate
+        case 'afterComponentWillMount': //子组件在ComponentWillMount中触发forceUpdate
+        case 'beforeComponentDidMount': //componentDidMount 触发forceUpdate
             return;
         default:
             mayQueue.clearQueue();
             break;
     }
 
+}
+Component.prototype.isMounted = function () {
+    return (!!(this._renderedVnode && this._renderedVnode._hostNode || this._hostNode)) || false;
 }
