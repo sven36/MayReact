@@ -870,7 +870,7 @@ describe("ReactCompositeComponent", function() {
     expect(renders).toBe(2);
     expect(instance.state.updated).toBe(true);
     */
-    });
+    /*});
 
     it("should update refs if shouldComponentUpdate gives false", () => {
         class Static extends React.Component {

@@ -12,13 +12,27 @@ React.render = render;
 
 // import React from "../../dist/ReactANU";
 // var ReactDOM = React;
+// var ReactTestUtils = { Simulate: {} };
+// "click,change,keyDown,keyUp,KeyPress,mouseDown,mouseUp,mouseMove".replace(/\w+/g, function (name) {
+//     ReactTestUtils.Simulate[name] = function (node, opts) {
+//         if (!node || node.nodeType !== 1) {
+//             throw "第一个参数必须为元素节点";
+//         }
+//         var fakeNativeEvent = opts || {};
+//         fakeNativeEvent.target = node;
+//         fakeNativeEvent.simulated = true;
+//         fakeNativeEvent.type = name.toLowerCase();
+//         React.eventSystem.dispatchEvent(fakeNativeEvent, name.toLowerCase());
+//     };
+// });
+
 //https://github.com/facebook/react/blob/master/src/isomorphic/children/__tests__/ReactChildren-test.js
 
 describe("ReactCompositeComponentNestedState-state", function() {
     //this.timeout(200000);
 
 
-    /*it('should provide up to date values for props', () => {
+    it('should provide up to date values for props', () => {
     class ParentComponent extends React.Component {
       state = {color: 'blue'};
 
@@ -118,7 +132,7 @@ describe("ReactCompositeComponentNestedState-state", function() {
       ['after-setState', 'light green', 'green']
      
     ]);
-  });*/
+  });/**/
 
 
 });

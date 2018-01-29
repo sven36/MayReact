@@ -10,10 +10,6 @@ var ReactDOM = {
 React.render = render;
 
 
-// import React from "../../dist/ReactANU";
-// var ReactDOM = React;
-
-
 describe("ReactCompositeComponentDOMMinimalism",function() {
     // this.timeout(200000);
 
@@ -35,7 +31,7 @@ describe("ReactCompositeComponentDOMMinimalism",function() {
         expect(el.children.length).toBe(0);
     };
 
-    /*it("should not render extra nodes for non-interpolated text", () => {
+    it("should not render extra nodes for non-interpolated text", () => {
         var instance = <MyCompositeComponent>A string child</MyCompositeComponent>;
         instance = ReactTestUtils.renderIntoDocument(instance);
         expectSingleChildlessDiv(instance);
@@ -59,5 +55,5 @@ describe("ReactCompositeComponentDOMMinimalism",function() {
         expect(el.children.length).toBe(1);
         expect(el.children[0].tagName).toBe("UL");
         expect(el.children[0].children.length).toBe(0);
-    });*/
+    });
 });

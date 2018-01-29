@@ -68,12 +68,17 @@ function sortComponent(a, b) {
 export function mergeState(instance) {
     var newState;
     var prevState = instance.state;
-    if (instance._mergeStateQueue) {
-        var newState = Object.assign({}, prevState);
-        var c;
-        while (c = instance._mergeStateQueue.shift()) {
-            newState = Object.assign(newState, c);
+    if (instance._mergeStateQueue && instance._mergeStateQueue.length > 0) {
+        var queue = instance._mergeStateQueue;
+        var newState = extend({}, prevState);
+        for (var i = 0; i < queue.length; i++) {
+            var s = queue[i];
+            if (s && s.call) {
+                s = s.call(instance, newState, instance.props);
+            }
+            newState = extend(newState, s);
         }
+        instance._mergeStateQueue.length = 0;
     } else {
         newState = prevState;
     }
@@ -86,7 +91,9 @@ export function mergeState(instance) {
 // }
 export function extend(target, src) {
     for (var key in src) {
-        target[key] = src[key];
+        if (src.hasOwnProperty(key)) {
+            target[key] = src[key];
+        }
     }
     return target;
 }
@@ -96,7 +103,7 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() {};
+    function b() { };
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;
