@@ -13,8 +13,6 @@ import {
 import {
     mayQueue
 } from './util';
-var lifeCycleQueue = mayQueue.lifeCycleQueue;
-
 
 //之前是 mount的时候setDomAttr一个方法 diff的时候diffProps一个方法
 //后来发现 写着写着要修改点setDomAttr的内容 diff的时候还要在判断一遍
@@ -51,7 +49,7 @@ export function diffProps(prev, now) {
         }
         if (ref) {
             if (typeof ref === 'function') {
-                lifeCycleQueue.push(now.ref.bind(now, now));
+                mayQueue.lifeCycleQueue.push(now.ref.bind(now, now));
             }
             if (typeof ref === 'string') {
                 if (Refs.currentOwner) {
@@ -63,10 +61,6 @@ export function diffProps(prev, now) {
                     }
                 }
             }
-        }
-
-        if (props['children']) {
-            diffChildren(prev, now, now._hostNode);
         }
     }
 

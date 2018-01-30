@@ -31,6 +31,7 @@ Component.prototype.setState = function (state, callback) {
     if (mayQueue.isInEvent) {
         //如果在绑定事件中 触发setState合并state
         if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+            this._dirty = true;
             mayQueue.dirtyComponentsQueue.push(this);
         }
         return;
@@ -46,11 +47,13 @@ Component.prototype.setState = function (state, callback) {
         case 'afterComponentWillMount': //子组件在ComponentWillMount中调用父组件的setState
         case 'beforeComponentDidMount': //componentDidMount 触发setState会放到下一周期beforeComponentRerender
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+                this._dirty = true;
                 mayQueue.dirtyComponentsQueue.push(this);
             }
             return;
         default:
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+                this._dirty = true;
                 mayQueue.dirtyComponentsQueue.push(this);
             }
             break;
@@ -59,11 +62,12 @@ Component.prototype.setState = function (state, callback) {
     mayQueue.clearQueue();
 }
 Component.prototype.forceUpdate = function (callback) {
-    this._forceUpdate = true;
     if (callback) {
         mayQueue.callbackQueue.push(callback.bind(this));
     }
     if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
+        this._forceUpdate = true;
+        this._dirty = true;
         mayQueue.dirtyComponentsQueue.push(this);
     }
     var lifeState = this._lifeState;

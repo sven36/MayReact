@@ -132,7 +132,7 @@ describe("ReactCompositeComponentNestedState-state", function() {
       ['after-setState', 'light green', 'green']
      
     ]);
-  });/**/
+  });
 
 
 });

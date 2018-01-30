@@ -179,6 +179,15 @@ function mountComposite(vnode, isSVG) {
 	}
 	return hostNode;
 }
+
+function mountText(vnode) {
+	if (vnode) {
+		return document.createTextNode(vnode.value);
+	} else {
+		return document.createComment('empty');
+	}
+}
+
 //React是根据type类型分成不同的Component各自具备各自的mount与update方法
 //我们这里简化成根据type类型调用不同的方法
 //mountDOM vnode.type为string直接createElement 然后render children即可
@@ -187,9 +196,16 @@ var mountStrategy = {
 	1: mountDOM, //dom
 	2: mountComposite, //component
 	3: mountDOM, //svg dom
-	4: updateDOM,
-	5: updateComposite,
-	6: updateDOM,
+	4: mountText //text
+}
+//diff根据vnode的不同类型调用不同的diff方法~
+//其实写着写着就发现还是类似React 根据不同的类型生成不同的Component
+//拥有对应的diff方法;
+var updateStrategy = {
+	1: updateDOM, //dom
+	2: updateComposite, //component
+	3: updateDOM, //svg dom
+	4: updateText //text
 }
 //存放生命周期中的 DidMount DidUpdate以及ref回调
 var lifeCycleQueue = mayQueue.lifeCycleQueue;
@@ -282,7 +298,16 @@ export function reRender(instance) {
 	}
 	if (isSameType(prevRenderedVnode, updatedVnode)) {
 		updatedVnode._hostNode = hostNode;
-		diffProps(prevRenderedVnode, updatedVnode);
+		//原先这种diffProps 再diffChildren的方式并未考虑到 render返回之后还是
+		//组件怎么办，连续几个组件嵌套children都需要render怎么办 这些情况都是diffProps
+		//无法处理的，当时想的是一个组件diff diff之后再diff下一个组件；但如果组件之间发生交互的
+		//话是需要在一个处理流程的；那diff我们也需要这种递归的思想了，所以setState的时候我们设置
+		//instance的_dirty为true如果父组件 子组件都dirty，父组件向下diff的过程中也会diff子组件
+		//此时在子组件diff之后我们要把_dirty设为false 否则因为子组件也在diffQueue之中，会再进行
+		//一次diff是多余的；不晓得我说明白没有~参考测试ReactCompositeComponentNestedState-state的
+		//should provide up to date values for props
+		hostNode = updateStrategy[updatedVnode.mtype](prevRenderedVnode, updatedVnode);
+		// diffProps(prevRenderedVnode, updatedVnode);
 	} else {
 		var isSVG = updatedVnode.mtype === 3;
 		var dom = mountStrategy[updatedVnode.mtype](updatedVnode, isSVG);
@@ -290,7 +315,7 @@ export function reRender(instance) {
 	}
 	instance._renderedVnode._hostNode = hostNode;
 	updatedVnode._vChildren = transformChildren(updatedVnode, hostNode);
-
+	instance._forceUpdate = null;
 	if (instance.componentDidUpdate) {
 		//执行完 componentWillUpdate 
 		instance._lifeState = 'beforeComponentDidUpdate';
@@ -302,22 +327,19 @@ export function reRender(instance) {
 			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
 		}
 	}
+	//如果没有再次diff的标识 设置_dirty为false
+	if (!instance._renderInNextCycle) {
+		instance._dirty = false;
+	}
 
 }
 
 function updateDOM(prevVnode, newVnode) {
-	if (prevVnode.ref && typeof prevVnode.ref === 'function') {
-		prevVnode.ref(null);
-	}
-	var hostNode = prevVnode._hostNode || null;
-	if (!Refs.currentOwner) {
-		Refs.currentOwner = hostNode;
-		Refs.currentOwner.refs = {};
-	}
+	var hostNode = (prevVnode && prevVnode._hostNode) || null;
+
+	diffProps(prevVnode, newVnode);
 	diffChildren(prevVnode, newVnode, hostNode);
-	if (newVnode.ref) {
-		lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
-	}
+
 	return hostNode;
 }
 
@@ -333,6 +355,10 @@ function updateComposite(prevVnode, newVnode) {
 		//empty代表prevVnode为null
 		isEmpty = true;
 	}
+	//用于mergeState如果setState传入一个function s.call(instance, newState, instance.nextProps || instance.props);
+	//其参数应当是newState nextProps
+	instance.nextProps = newVnode.props;
+	var newState = mergeState(instance);
 	instance._lifeState = 'beforeComponentWillReceiveProps';
 	if (prevVnode !== newVnode || prevVnode.context !== newVnode.context) {
 		if (instance.componentWillReceiveProps) {
@@ -340,7 +366,6 @@ function updateComposite(prevVnode, newVnode) {
 		}
 		instance.props = newVnode.props;
 	}
-	var newState = mergeState(instance);
 	instance._lifeState = 'beforeShouldComponentUpdate';
 	//shouldComponentUpdate 返回false 则不进行子组件渲染
 	if (!instance._forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(newVnode.props, newState, newVnode.context) === false) {
@@ -360,24 +385,42 @@ function updateComposite(prevVnode, newVnode) {
 	newVnode._renderedVnode = newRenderedVnode;
 	newVnode._inst = instance;
 	instance._renderedVnode = newRenderedVnode;
-
-	if (newRenderedVnode && !isEmpty) {
-		diffChildren(prevRenderedVnode, newRenderedVnode, hostNode);
+	if (isEmpty || !newRenderedVnode) {
+		//如果之前node为空 或 新render的为空 直接释放之前节点
+		disposeVnode(prevRenderedVnode);
+		disposeDom(hostNode);
 	} else {
-		if (isEmpty && newRenderedVnode) {
+		if (isSameType(prevRenderedVnode, newRenderedVnode)) {
+			hostNode = updateStrategy[newRenderedVnode.mtype](prevRenderedVnode, newRenderedVnode);
+		} else {
 			var isSVG = newRenderedVnode.mtype === 3;
 			newDom = mountStrategy[newRenderedVnode.mtype](newRenderedVnode, isSVG);
 			newRenderedVnode._hostNode = newDom;
 			hostNode.parentNode.replaceChild(newDom, hostNode);
+			disposeVnode(prevRenderedVnode);
+			disposeDom(hostNode);
 		}
-		disposeVnode(prevRenderedVnode);
-		disposeDom(hostNode);
 	}
+
+	// if (newRenderedVnode && !isEmpty) {
+
+	// 	// diffChildren(prevRenderedVnode, newRenderedVnode, hostNode);
+	// } else {
+	// 	if (isEmpty && newRenderedVnode) {
+	// 		var isSVG = newRenderedVnode.mtype === 3;
+	// 		newDom = mountStrategy[newRenderedVnode.mtype](newRenderedVnode, isSVG);
+	// 		newRenderedVnode._hostNode = newDom;
+	// 		hostNode.parentNode.replaceChild(newDom, hostNode);
+	// 	}
+	// 	disposeVnode(prevRenderedVnode);
+	// 	disposeDom(hostNode);
+	// }
+	instance._dirty = false;
 	if (instance.componentDidUpdate) {
 		instance._lifeState = 'beforeComponentDidUpdate';
 		lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
 	}
-	if (newVnode.ref) {
+	if (newVnode.ref && typeof newVnode.ref === 'function') {
 		lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
 	}
 	if (newDom) {
@@ -386,19 +429,36 @@ function updateComposite(prevVnode, newVnode) {
 	return hostNode;
 }
 
-function mayUpdate(prevVnode, newVnode, container) {
+function updateText(prev, now) {
+	var hostNode = now._hostNode || null;
+	if (prev) { //child._prevVnode
+		if (hostNode.nodeValue !== now.value) {
+			hostNode.nodeValue = now.value;
+		}
+	} else {
+		hostNode = document.createTextNode(now.value);
+	}
+	return hostNode;
+}
+
+function mayUpdate(prevVnode, newVnode, parent) {
 	var isSVG = newVnode.mtype === 3;
 	var hostNode = prevVnode._hostNode || prevVnode._renderedVnode._hostNode;
 	var dom;
+
 	if (prevVnode.type === newVnode.type) {
-		dom = mountStrategy[newVnode.mtype + 3](prevVnode, newVnode);
+		dom = updateStrategy[newVnode.mtype](prevVnode, newVnode);
 	} else {
 		dom = mountStrategy[newVnode.mtype](newVnode, isSVG);
-		container.replaceChild(dom, hostNode);
+		if (!parent) {
+			parent = hostNode && hostNode.parentNode;
+		}
+		parent.replaceChild(dom, hostNode);
 		disposeVnode(prevVnode);
 		disposeDom(hostNode);
 		hostNode = null;
 	}
+	return dom;
 }
 
 export function diffChildren(prevVnode, updatedVnode, parent) {
@@ -425,6 +485,7 @@ export function diffChildren(prevVnode, updatedVnode, parent) {
 					k = "#text";
 					_tran = {
 						type: '#text',
+						mtype: 4, //text
 						value: c
 					}
 					c = _tran;
@@ -470,59 +531,29 @@ export function diffChildren(prevVnode, updatedVnode, parent) {
 }
 
 function flushMounts(newChildren, parent) {
-
 	for (var _i = 0; _i < newChildren.length; _i++) {
 		var child = newChildren[_i];
-		var type = typeof child.type;
+		var _node = parent.childNodes[_i];
 		var newDom;
-		switch (type) {
-			case 'function':
-				//如果能复用之前节点
-				if (child._reused) {
-					var hostNode = updateComposite(child._prevVnode, child);
-				} else {
-					newDom = mountStrategy[child.mtype](child);
-					var node = parent.childNodes[_i];
-					if (node) {
-						parent.insertBefore(newDom, node);
-						// insertCount++;
-					} else {
-						parent.appendChild(newDom);
-					}
-				}
-
-				break;
-			case 'string':
-				var _node = parent.childNodes[_i];
-				if (child._reused) {
-					if (_node && _node !== child._hostNode) {
-						newDom = parent.removeChild(child._hostNode);
-						parent.insertBefore(newDom, _node)
-					}
-					if (child.type !== '#text') {
-						diffProps(child._prevVnode, child);
-					} else { //text
-						if (child._hostNode.nodeValue !== child.value) {
-							child._hostNode.nodeValue = child.value;
-						}
-					}
-				} else {
-					if (child.type !== '#text') {
-						newDom = mountStrategy[child.mtype](child);
-						child._hostNode = newDom;
-						parent.insertBefore(newDom, _node);
-					} else {
-						newDom = document.createTextNode(child.value);
-						parent.insertBefore(newDom, _node);
-					}
-
-				}
-
-				break;
-
+		if (child._prevVnode) { //如果可以复用之前节点
+			newDom = updateStrategy[child.mtype](child._prevVnode, child);
+			if (_node && _node !== newDom) { //移动dom
+				newDom = parent.removeChild(newDom);
+				parent.insertBefore(newDom, _node)
+			} else if (!_node) {
+				parent.appendChild(newDom);
+			}
+		} else { //新增节点
+			var isSVG = child.mtype === 3;
+			// var isSVG = vnode.namespaceURI === "http://www.w3.org/2000/svg";
+			newDom = mountStrategy[child.mtype](child, isSVG);
+			child._hostNode = newDom;
+			if (_node) {
+				parent.insertBefore(newDom, _node);
+			} else {
+				parent.appendChild(newDom);
+			}
 		}
-
-
 	}
 }
 
@@ -601,6 +632,7 @@ function transformChildren(renderedVnode, parent) {
 				//相邻的简单数据类型合并成一个字符串
 				var tran = {
 					type: '#text',
+					mtype: 4,
 					value: c
 				}
 				if (childList[i - noCount]) {
@@ -635,7 +667,11 @@ function disposeVnode(vnode) {
 		vnode.ref(null);
 		vnode.ref = null;
 	}
+
 	if (vnode._inst) {
+		if (vnode._inst.setState) {
+			vnode._inst.setState = noop;
+		}
 		if (vnode._inst.componentWillUnmount) {
 			//componentWillUnmount中触发setState 忽略
 			vnode._inst._lifeState = 'beforeComponentWillUnmount';
@@ -745,3 +781,5 @@ function callIteractor(iteratorFn, children) {
 	}
 	return ret;
 }
+
+function noop() {};

@@ -1,4 +1,3 @@
-
 import {
     reRender
 } from './MayDom'
@@ -30,7 +29,11 @@ function flushUpdates() {
     //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理
     mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
     while (c = mayQueue.dirtyComponentsQueue.shift()) {
-        reRender(c);
+        if (c._dirty) {
+            //如果C是脏组件diff 如果其在diff过程中子组件也需要diff diff之后
+            //子组件_dirty会为false 没必要再diff一次；
+            reRender(c);
+        }
         if (c) {
             c._lifeState = 'reRenderComplete';
         }
@@ -74,7 +77,7 @@ export function mergeState(instance) {
         for (var i = 0; i < queue.length; i++) {
             var s = queue[i];
             if (s && s.call) {
-                s = s.call(instance, newState, instance.props);
+                s = s.call(instance, newState, instance.nextProps || instance.props);
             }
             newState = extend(newState, s);
         }
@@ -103,7 +106,7 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() { };
+    function b() {};
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;

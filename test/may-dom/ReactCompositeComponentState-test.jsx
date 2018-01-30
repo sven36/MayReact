@@ -106,7 +106,6 @@ describe("ReactCompositeComponentDOMMinimalism", function() {
     };
 
     /*it("should support setting state", () => {
-        return;
         var container = document.createElement("div");
         document.body.appendChild(container);
         var stateListener = spyOn.createSpy();
@@ -191,7 +190,7 @@ describe("ReactCompositeComponentDOMMinimalism", function() {
         ];
 
         expect(stateListener.calls.join("\n")).toEqual(expected.join("\n"));
-    });
+    });*/
 
     it("should call componentDidUpdate of children first", () => {});
 
@@ -265,7 +264,7 @@ describe("ReactCompositeComponentDOMMinimalism", function() {
         ]);
     });
 
-    it("should merge state when sCU returns false", function() {
+    /*it("should merge state when sCU returns false", function() {
         const log = [];
         class Test extends React.Component {
             state = { a: 0 };
