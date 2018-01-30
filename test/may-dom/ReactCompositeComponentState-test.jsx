@@ -264,7 +264,7 @@ describe("ReactCompositeComponentDOMMinimalism", function() {
         ]);
     });
 
-    /*it("should merge state when sCU returns false", function() {
+    it("should merge state when sCU returns false", function() {
         const log = [];
         class Test extends React.Component {
             state = { a: 0 };
@@ -319,6 +319,6 @@ describe("ReactCompositeComponentDOMMinimalism", function() {
         'Warning: Test.componentWillReceiveProps(): Assigning directly to ' +
           "this.state is deprecated (except inside a component's constructor). " +
           'Use setState instead.',
-      );*/
-    // });
+      );/**/
+   });
 });

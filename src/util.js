@@ -29,13 +29,13 @@ function flushUpdates() {
     //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理
     mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
     while (c = mayQueue.dirtyComponentsQueue.shift()) {
-        if (c._dirty) {
+        if (c.mayInst.dirty) {
             //如果C是脏组件diff 如果其在diff过程中子组件也需要diff diff之后
             //子组件_dirty会为false 没必要再diff一次；
             reRender(c);
         }
         if (c) {
-            c._lifeState = 'reRenderComplete';
+            c.mayInst.lifeState = 'reRenderComplete';
         }
     }
     //ComponentDidUpdate
@@ -57,22 +57,24 @@ function clearCallbackQueue() {
     //再清空 setState传入的回调函数
     if (mayQueue.callbackQueue && mayQueue.callbackQueue.length > 0) {
         var callback;
-        mayQueue.callbackQueue = mayQueue.callbackQueue.sort(sortComponent);
+        mayQueue.callbackQueue = mayQueue.callbackQueue.sort(sortCallback);
         while (callback = mayQueue.callbackQueue.shift()) {
             callback();
         }
     }
 }
-
-function sortComponent(a, b) {
+function sortCallback(a, b) {
     return a._mountOrder - b._mountOrder;
+}
+function sortComponent(a, b) {
+    return a.mayInfo.mountOrder - b.mayInfo.mountOrder;
 }
 
 export function mergeState(instance) {
     var newState;
     var prevState = instance.state;
-    if (instance._mergeStateQueue && instance._mergeStateQueue.length > 0) {
-        var queue = instance._mergeStateQueue;
+    if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
+        var queue = instance.mayInst.mergeStateQueue;
         var newState = extend({}, prevState);
         for (var i = 0; i < queue.length; i++) {
             var s = queue[i];
@@ -81,7 +83,7 @@ export function mergeState(instance) {
             }
             newState = extend(newState, s);
         }
-        instance._mergeStateQueue.length = 0;
+        instance.mayInst.mergeStateQueue.length = 0;
     } else {
         newState = prevState;
     }
@@ -106,7 +108,7 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() {};
+    function b() { };
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;

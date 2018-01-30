@@ -15,23 +15,23 @@ export function Component(props, key, ref, context) {
 }
 
 Component.prototype.setState = function (state, callback) {
-    var lifeState = this._lifeState;
+    var lifeState = this.mayInst.lifeState;
 
     if (callback) {
         //回调队列调用之前也许sort
         callback = callback.bind(this);
-        callback._mountOrder = this._mountOrder;
+        callback._mountOrder = this.mayInst.mountOrder;
         mayQueue.callbackQueue.push(callback);
     }
-    if (this._mergeStateQueue) {
-        this._mergeStateQueue.push(state);
+    if (this.mayInst.mergeStateQueue) {
+        this.mayInst.mergeStateQueue.push(state);
     } else {
-        this._mergeStateQueue = new Array(state);
+        this.mayInst.mergeStateQueue = new Array(state);
     }
     if (mayQueue.isInEvent) {
         //如果在绑定事件中 触发setState合并state
         if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
-            this._dirty = true;
+            this.mayInst.dirty = true;
             mayQueue.dirtyComponentsQueue.push(this);
         }
         return;
@@ -43,17 +43,17 @@ Component.prototype.setState = function (state, callback) {
             this.state = mergeState(this);
             return;
         case 'beforeComponentRerender': //子组件componentWillReceiveProps 调用父组件的setState 触发setState会放到下一周期
-            this._renderInNextCycle = true;
+            this.mayInst.renderInNextCycle = true;
         case 'afterComponentWillMount': //子组件在ComponentWillMount中调用父组件的setState
         case 'beforeComponentDidMount': //componentDidMount 触发setState会放到下一周期beforeComponentRerender
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
-                this._dirty = true;
+                this.mayInst.dirty = true;
                 mayQueue.dirtyComponentsQueue.push(this);
             }
             return;
         default:
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
-                this._dirty = true;
+                this.mayInst.dirty = true;
                 mayQueue.dirtyComponentsQueue.push(this);
             }
             break;
@@ -66,11 +66,11 @@ Component.prototype.forceUpdate = function (callback) {
         mayQueue.callbackQueue.push(callback.bind(this));
     }
     if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
-        this._forceUpdate = true;
-        this._dirty = true;
+        this.mayInst.forceUpdate = true;
+        this.mayInst.dirty = true;
         mayQueue.dirtyComponentsQueue.push(this);
     }
-    var lifeState = this._lifeState;
+    var lifeState = this.mayInst.lifeState;
     switch (lifeState) {
         case 'beforeComponentWillUnmount': //componentWillUnmount 触发forceUpdate
         case 'beforeComponentWillMount': //componentWillMount 触发forceUpdate会合并state
@@ -85,5 +85,5 @@ Component.prototype.forceUpdate = function (callback) {
 
 }
 Component.prototype.isMounted = function () {
-    return (!!(this._renderedVnode && this._renderedVnode._hostNode || this._hostNode)) || false;
+    return (!!(this.mayInfo.hostNode || this.mayInfo.isEmpty)) || false;
 }

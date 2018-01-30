@@ -72,6 +72,9 @@ var Vnode = function (type, key, ref, props, mtype) {
     this.props = props;
     this.$$typeof = 1;
     this.mtype = mtype;
+    //之前是直接赋在vnode上 多了之后容易混 
+    //单独新建个对象存放各种信息
+    this.mayInfo = {};
 }
 
 export function isValaidElement(object) {

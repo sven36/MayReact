@@ -19,7 +19,7 @@ import {
 //那干脆把这两个合成一个方法好了
 export function diffProps(prev, now) {
     var props = now.props;
-    var hostNode = now._hostNode;
+    var hostNode = now.mayInfo.hostNode;
     if (!prev) { //setDomAttr
         setDomAttr(hostNode, props);
     } else {
