@@ -63,11 +63,13 @@ function clearCallbackQueue() {
         }
     }
 }
+
 function sortCallback(a, b) {
     return a._mountOrder - b._mountOrder;
 }
+
 function sortComponent(a, b) {
-    return a.mayInfo.mountOrder - b.mayInfo.mountOrder;
+    return a.mayInst.mountOrder - b.mayInst.mountOrder;
 }
 
 export function mergeState(instance) {
@@ -108,7 +110,7 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() { };
+    function b() {};
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;

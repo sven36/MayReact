@@ -44,6 +44,7 @@ Component.prototype.setState = function (state, callback) {
             return;
         case 'beforeComponentRerender': //子组件componentWillReceiveProps 调用父组件的setState 触发setState会放到下一周期
             this.mayInst.renderInNextCycle = true;
+        case 'beforeComponentWillReceiveProps': //ComponentWillReceiveProps 中setState
         case 'afterComponentWillMount': //子组件在ComponentWillMount中调用父组件的setState
         case 'beforeComponentDidMount': //componentDidMount 触发setState会放到下一周期beforeComponentRerender
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
@@ -72,11 +73,12 @@ Component.prototype.forceUpdate = function (callback) {
     }
     var lifeState = this.mayInst.lifeState;
     switch (lifeState) {
-        case 'beforeComponentWillUnmount': //componentWillUnmount 触发forceUpdate
-        case 'beforeComponentWillMount': //componentWillMount 触发forceUpdate会合并state
-        case 'beforeComponentRerender': //子组件componentWillReceiveProps 触发forceUpdate
-        case 'afterComponentWillMount': //子组件在ComponentWillMount中触发forceUpdate
-        case 'beforeComponentDidMount': //componentDidMount 触发forceUpdate
+        case 'beforeComponentWillUnmount': //componentWillUnmount 
+        case 'beforeComponentWillMount': //componentWillMount 会合并state
+        case 'beforeComponentRerender': //componentWillReceiveProps 
+        case 'afterComponentWillMount': //ComponentWillMount
+        case 'beforeComponentDidMount': //componentDidMount 
+        case 'beforeComponentWillReceiveProps': //ComponentWillReceiveProps 
             return;
         default:
             mayQueue.clearQueue();
@@ -85,5 +87,5 @@ Component.prototype.forceUpdate = function (callback) {
 
 }
 Component.prototype.isMounted = function () {
-    return (!!(this.mayInfo.hostNode || this.mayInfo.isEmpty)) || false;
+    return this.mayInst ? (!!this.mayInst.hostNode || this.mayInst.isEmpty) : false;
 }

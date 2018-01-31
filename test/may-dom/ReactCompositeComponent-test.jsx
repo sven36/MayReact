@@ -18,7 +18,7 @@ React.render = render;
 describe("ReactCompositeComponent", function() {
     // this.timeout(200000);
 
-    /*it("should support module pattern components", () => {
+    it("should support module pattern components", () => {
         function Child({ test }) {
             return {
                 render() {
@@ -227,7 +227,7 @@ describe("ReactCompositeComponent", function() {
         expect(cbCalled).toBe(false);
     });
 
-    it("should warn about `setState` in render", () => {
+    /*it("should warn about `setState` in render", () => {
         spyOn(console, "error");
 
         var container = document.createElement("div");
@@ -290,7 +290,7 @@ describe("ReactCompositeComponent", function() {
         var instance = ReactDOM.render(<Component />, container);
         expect(renderPasses).toBe(2);
         expect(instance.state.value).toBe(4);
-    });
+    });*/
 
     it("should call componentWillUnmount before unmounting", () => {
         var container = document.createElement("div");
@@ -341,7 +341,7 @@ describe("ReactCompositeComponent", function() {
         expect(container.textContent).toBe(""); //布尔会转换为空字符串
     });
     //https://github.com/facebook/react/blob/master/src/renderers/__tests__/ReactCompositeComponent-test.js#L526
-    it("should pass context to children when not owner", () => {
+    /*it("should pass context to children when not owner", () => {
         class Parent extends React.Component {
             render() {
                 return (

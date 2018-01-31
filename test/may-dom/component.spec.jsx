@@ -42,7 +42,7 @@ describe("组件相关", function() {
         var vnode = <HelloComponent name="Sebastian" />
         React.render(vnode, div);
 
-        expect(vnode._renderedVnode._hostNode.innerHTML).toBe("Hello Sebastian");
+        expect(vnode.mayInfo.hostNode.innerHTML).toBe("Hello Sebastian");
     });
    
     it("shouldComponentUpdate什么也不返回", function() {
@@ -82,9 +82,9 @@ describe("组件相关", function() {
         }
         var vnode = <App />
         ReactDOM.render(vnode, div);
-        expect(vnode._renderedVnode._hostNode.innerHTML).toBe("1");
+        expect(vnode.mayInfo.hostNode.innerHTML).toBe("1");
         // ReactTestUtils.Simulate.click(vnode._hostNode)
-        // expect(vnode._renderedVnode._hostNode.innerHTML).toBe("1");
+        // expect(vnode.mayInfo.hostNode.innerHTML).toBe("1");
 
         // expect(a).toBe(3);
     });
@@ -126,9 +126,9 @@ describe("组件相关", function() {
 
         var vnode = <App />
         ReactDOM.render(vnode, div);
-        expect(vnode._renderedVnode._hostNode.innerHTML).toBe("1");
-        // ReactTestUtils.Simulate.click(vnode._renderedVnode._hostNode)
-        // expect(vnode._renderedVnode._hostNode.innerHTML).toBe("1");
+        expect(vnode.mayInfo.hostNode.innerHTML).toBe("1");
+        // ReactTestUtils.Simulate.click(vnode.mayInfo.hostNode)
+        // expect(vnode.mayInfo.hostNode.innerHTML).toBe("1");
         // expect(a).toBe(3);
     });
     it("PureComponent", function() {
@@ -155,7 +155,7 @@ describe("组件相关", function() {
 
         var vnode = <App />
         ReactDOM.render(vnode, div);
-        expect(vnode._renderedVnode._hostNode.innerHTML).toBe("7");
+        expect(vnode.mayInfo.hostNode.innerHTML).toBe("7");
         // ReactTestUtils.Simulate.click(vnode._hostNode)
         // expect(vnode._hostNode.innerHTML).toBe("7");
     });
@@ -186,7 +186,7 @@ describe("组件相关", function() {
 
         var vnode = <App />
         ReactDOM.render(vnode, div);
-        expect(vnode._renderedVnode._hostNode.innerHTML).toBe("7");
+        expect(vnode.mayInfo.hostNode.innerHTML).toBe("7");
         // ReactTestUtils.Simulate.click(vnode._hostNode)
         // expect(vnode._hostNode.innerHTML).toBe("9");
 

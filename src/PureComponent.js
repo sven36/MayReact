@@ -14,30 +14,30 @@ fn.shouldComponentUpdate = function (nextProps, nextState, context) {
     var ret = true;;
     var a = shallowEqual(this.props, nextProps);
     var b = shallowEqual(this.state, nextState);
-    if (a === false && b === false) {
+    if (a === true && b === true) {
         ret = false;
     }
     return ret;
 }
 
-function shallowEqual(now, next) {
+export function shallowEqual(now, next) {
     if (Object.is(now, next)) {
-        return false;
+        return true;
     }
     //必须是对象
     if ((now && typeof now !== 'object') || (next && typeof next !== 'object')) {
-        return '不是对象';
+        return false;
     }
     var keysA = Object.keys(now);
     var keysB = Object.keys(next);
     if (keysA.length !== keysB.length) {
-        return '键值对 不一样';
+        return false;
     }
     // Test for A's keys different from B.
     for (var i = 0; i < keysA.length; i++) {
         if (!hasOwnProperty.call(next, keysA[i]) || !Object.is(now[keysA[i]], next[keysA[i]])) {
-            return 'different';
+            return false;
         }
     }
-    return false;
+    return true;
 }

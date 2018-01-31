@@ -81,9 +81,9 @@ describe("事件系统模块", function () {
         //karma在跑完当前test之后 还会接着跑 ref.spec.jsx的test 跑ref-test的test等
         //故而会多次触发点击; 故测试用代码触发即可;ReactTestUtils.Simulate.click
         expect(s.state.aaa).toBe(111);
-        ReactTestUtils.Simulate.click(s._renderedVnode._hostNode);
+        ReactTestUtils.Simulate.click(s.mayInst.hostNode);
         expect(s.state.aaa).toBe(112);
-        ReactTestUtils.Simulate.click(s._renderedVnode._hostNode);
+        ReactTestUtils.Simulate.click(s.mayInst.hostNode);
         expect(s.state.aaa).toBe(113);
         //确保存在eventSystem对象
         // expect(React.eventSystem).toA("object");

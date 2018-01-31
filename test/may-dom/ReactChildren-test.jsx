@@ -3,26 +3,29 @@
 // import React from '../../src/May';
 // import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom'
 // var ReactDOM = {
-//     render: render,
-//     unmountComponentAtNode: unmountComponentAtNode,
-//     findDOMNode: findDOMNode
+//   render: render,
+//   unmountComponentAtNode: unmountComponentAtNode,
+//   findDOMNode: findDOMNode
 // }
 // React.render = render;
+
+import React from "../../dist/ReactANU";
+var ReactDOM = React;
+
 
 //https://github.com/facebook/react/blob/master/src/isomorphic/children/__tests__/ReactChildren-test.js
 // var ReactDOM = window.ReactDOM || React;
 
-describe("ReactChildren", function() {
+describe("ReactChildren", function () {
   // this.timeout(200000);
 
   /*it('should support identity for simple', () => {
     var context = {};
-    var callback = spyOn.createSpy(function(kid, index) {
+    var callback = jasmine.createSpy(function (kid, index) {
       expect(this).toBe(context);
       expect(index).toBe(0);
       return kid;
     });
-
     var simpleKid = <span key="simple" />;
 
     // First pass children into a component to fully simulate what happens when
