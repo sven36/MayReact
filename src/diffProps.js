@@ -20,8 +20,14 @@ import {
 export function diffProps(prev, now) {
     var props = now.props;
     var hostNode = now.mayInfo.hostNode;
+    var prevStyle = prev && prev.props.style;
+    var nowStyle = props.style;
+
     if (!prev) { //setDomAttr
         setDomAttr(hostNode, props);
+        if (nowStyle) {
+            patchStyle(hostNode, prevStyle, nowStyle);
+        }
     } else {
         var prevProps = prev.props;
         for (var name in props) {
@@ -61,6 +67,9 @@ export function diffProps(prev, now) {
                     }
                 }
             }
+        }
+        if (prevStyle !== nowStyle) {
+            patchStyle(hostNode, prevStyle, nowStyle);
         }
     }
 
@@ -124,35 +133,6 @@ export function setDomAttr(dom, props) {
             listener[e] = props[key];
         }
     }
-    if (props['style']) {
-        var _obj = props['style'];
-        var _style = '';
-        for (var name in _obj) {
-            if (_obj[name] !== null) {
-                //backgroundColor 替换为 background-color Webkit替换为-webkit-   ms单独替换一次
-                _style += name.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^ms-/i, '-ms-') + ':';
-
-                var _type = typeof _obj[name];
-                switch (_type) {
-                    case 'string':
-                        _style += _obj[name].trim() + ';';
-                        break;
-                    case 'number':
-                        _style += _obj[name];
-                        if (cssSuffix[name]) {
-                            _style += _obj[name] !== 0 ? +cssSuffix[name] : '';
-                        }
-                        _style += ';';
-                        break;
-                    default:
-                        _style += _obj[name] + ';';
-                        break;
-                }
-                dom.setAttribute('style', _style);
-            }
-        }
-    }
-
 }
 export function removeDomAttr(dom, props, key) {
     var nodeType = dom.nodeType;
@@ -183,6 +163,38 @@ export function removeDomAttr(dom, props, key) {
 
 function isEvent(name) {
     return /^on[A-Z]/.test(name);
+}
+export function patchStyle(dom, prevStyle, newStyle) {
+    var _style = '';
+    for (var name in newStyle) {
+        var _type = typeof newStyle[name];
+        //backgroundColor 替换为 background-color Webkit替换为-webkit-   ms单独替换一次
+        var cssName = name.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^ms-/i, '-ms-');
+        switch (_type) {
+            case 'string':
+                _style = newStyle[name].trim();
+                break;
+            case 'number':
+                _style = newStyle[name];
+                if (cssSuffix[name]) {
+                    _style += newStyle[name] !== 0 ? +cssSuffix[name] : '';
+                }
+                break;
+            case 'boolean':
+                _style = '';
+                break;
+            default:
+                _style = newStyle[name]
+                break;
+        }
+        dom.style[cssName] = _style;
+    }
+    for (var key in prevStyle) {
+        if (!(key in newStyle)) {
+            key = name.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^ms-/i, '-ms-');
+            dom.style[key] = '';
+        }
+    }
 }
 
 const cssSuffix = {

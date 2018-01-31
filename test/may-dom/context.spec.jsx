@@ -78,15 +78,15 @@ describe('context', function () {
         var strongs = div.getElementsByTagName('strong')
         expect(strongs[0].innerHTML).toBe('')
         expect(strongs[1].innerHTML).toBe('Banana')
-        // ReactTestUtils.Simulate.click(s.refs.a)
+        ReactTestUtils.Simulate.click(s.refs.a)
 
-        // strongs = div.getElementsByTagName('strong')
-        // expect(strongs[0].innerHTML).toBe('')
-        // expect(strongs[1].innerHTML).toBe('111')
-        // ReactTestUtils.Simulate.click(s.refs.a)
-        // strongs = div.getElementsByTagName('strong')
-        // expect(strongs[0].innerHTML).toBe('')
-        // expect(strongs[1].innerHTML).toBe('222')
+        strongs = div.getElementsByTagName('strong')
+        expect(strongs[0].innerHTML).toBe('')
+        expect(strongs[1].innerHTML).toBe('111')
+        ReactTestUtils.Simulate.click(s.refs.a)
+        strongs = div.getElementsByTagName('strong')
+        expect(strongs[0].innerHTML).toBe('')
+        expect(strongs[1].innerHTML).toBe('222')
     })
 
 

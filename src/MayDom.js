@@ -12,7 +12,8 @@ import {
 	Refs
 } from './Refs';
 
-
+//存放生命周期中的 DidMount DidUpdate以及ref回调
+var lifeCycleQueue = mayQueue.lifeCycleQueue;
 export function render(vnode, container, callback) {
 	return renderByMay(vnode, container, callback);
 }
@@ -73,9 +74,7 @@ function mountDOM(vnode, isSVG) {
 	}
 	var props = vnode.props;
 	var cdom, c, parentContext;
-	if (vnode.mayInfo.refOwner && vnode.mayInfo.refOwner.context) {
-		parentContext = vnode.mayInfo.refOwner.context;
-	}
+
 	if (children) {
 		var len = children.length;
 		for (let i = 0; i < len; i++) {
@@ -93,9 +92,7 @@ function mountDOM(vnode, isSVG) {
 					break;
 				case 'object': //vnode
 					if (c.type) {
-						if (parentContext) {
-							c.context = getContextByTypes(parentContext, c.type.contextTypes);
-						}
+						c.context = getContextByTypes(vnode.context, c.type.contextTypes);
 						cdom = mountStrategy[c.mtype](c, isSVG);
 						c.mayInfo.hostNode = cdom;
 						hostNode.appendChild(cdom);
@@ -212,8 +209,7 @@ var updateStrategy = {
 	3: updateDOM, //svg dom
 	4: updateText //text
 }
-//存放生命周期中的 DidMount DidUpdate以及ref回调
-var lifeCycleQueue = mayQueue.lifeCycleQueue;
+
 var mountOrder = 0;
 
 function buildComponentFromVnode(vnode) {
@@ -245,13 +241,7 @@ function buildComponentFromVnode(vnode) {
 		}
 		renderedVnode = inst.render(props, context);
 		if (inst.getChildContext) {
-			var getContext = inst.getChildContext();
-			if (getContext && typeof getContext === 'object') {
-				if (!context) {
-					context = {};
-				}
-				context = Object.assign(context, getContext);
-			}
+			context = getChildContext(inst, context);
 		}
 		if (context) {
 			inst.context = getContextByTypes(context, Ctor.contextTypes);
@@ -292,6 +282,9 @@ function getContextByTypes(context, typeCheck) {
 export function reRender(instance) {
 	var props = instance.props;
 	var context = instance.context;
+	if (instance.getChildContext) {
+		context = getChildContext(instance, context);
+	}
 	var prevState = instance.state;
 	var prevRendered = instance.mayInst.rendered;
 	var isEmpty = !prevRendered;
@@ -313,6 +306,7 @@ export function reRender(instance) {
 	instance.mayInst.lifeState = 'beforeComponentRerender';
 	var updated = instance.render(props, context);
 	instance.mayInst.rendered = updated;
+	updated.context = context;
 	if (!updated) {
 		disposeVnode(prevRendered);
 		return;
@@ -348,11 +342,11 @@ export function reRender(instance) {
 		//执行完 componentWillUpdate 
 		instance.mayInst.lifeState = 'beforeComponentDidUpdate';
 		if (instance.mayInst.renderInNextCycle) {
-			instance.componentDidUpdate();
+			instance.componentDidUpdate(instance.props, instance.state, instance.context);
 			//执行完 componentDidUpdate
 			instance.mayInst.lifeState = 'afterComponentDidUpdate';
 		} else {
-			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
+			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.props, instance.state, instance.context));
 		}
 	}
 	//如果没有再次diff的标识 设置_dirty为false
@@ -378,6 +372,10 @@ function updateComposite(prevVnode, newVnode) {
 	if (prevVnode.ref && typeof prevVnode.ref === 'function') {
 		prevVnode.ref(null);
 	}
+	var context = newVnode.context || {};
+	if (newVnode.type && newVnode.type.contextTypes) {
+		context = getContextByTypes(context, newVnode.type.contextTypes);
+	}
 	var instance = prevVnode.mayInfo.instance;
 	//empty代表prevVnode为null
 	var isEmpty = !prevVnode.mayInfo.rendered;
@@ -385,14 +383,19 @@ function updateComposite(prevVnode, newVnode) {
 	var newDom, newRendered;
 	var skip = false;
 	if (instance) {
+
 		//用于mergeState如果setState传入一个function s.call(instance, newState, instance.nextProps || instance.props);
 		//其参数应当是newState nextProps
 		instance.nextProps = newVnode.props;
+		if (instance.getChildContext) {
+			//getChildContext 有可能用到新的props
+			context = getChildContext(instance, context);
+		}
 		var newState = mergeState(instance);
 		instance.mayInst.lifeState = 'beforeComponentWillReceiveProps';
-		if (prevVnode !== newVnode || prevVnode.context !== newVnode.context) {
+		if (prevVnode !== newVnode || prevVnode.context !== context) {
 			if (instance.componentWillReceiveProps) {
-				instance.componentWillReceiveProps(newVnode.props, newVnode.context);
+				instance.componentWillReceiveProps(newVnode.props, context);
 			}
 			instance.props = newVnode.props;
 			// 如果在componentWillReceiveProps中调用了setState
@@ -400,18 +403,20 @@ function updateComposite(prevVnode, newVnode) {
 				newState = mergeState(instance);
 			}
 		}
+
 		instance.mayInst.lifeState = 'beforeShouldComponentUpdate';
 		//shouldComponentUpdate 返回false 则不进行子组件渲染
-		if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(newVnode.props, newState, newVnode.context) === false) {
+		if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(newVnode.props, newState, context) === false) {
 			slip = true;
 		} else if (instance.componentWillUpdate) {
-			instance.componentWillUpdate();
+			instance.componentWillUpdate(newVnode.props, newState, context);
 		}
 		if (skip) {
 			instance.mayInst.dirty = false;
 			return;
 		}
 		instance.state = newState;
+		instance.context = context;
 		if (!Refs.currentOwner) {
 			Refs.currentOwner = instance;
 			Refs.currentOwner.refs = {};
@@ -420,6 +425,8 @@ function updateComposite(prevVnode, newVnode) {
 		var prevRendered = prevVnode.mayInfo.rendered;
 		instance.mayInst.lifeState = 'beforeComponentRerender';
 		newRendered = instance.render();
+
+		newRendered && (newRendered.context = context);
 		newVnode.mayInfo.rendered = newRendered;
 		newVnode.mayInfo.instance = instance;
 		instance.mayInst.rendered = newRendered;
@@ -450,7 +457,7 @@ function updateComposite(prevVnode, newVnode) {
 		}
 		if (instance.componentDidUpdate) {
 			instance.mayInst.lifeState = 'beforeComponentDidUpdate';
-			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance));
+			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.state, instance.props, instance.context));
 		}
 		if (newVnode.ref && typeof newVnode.ref === 'function') {
 			lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
@@ -520,6 +527,11 @@ export function diffChildren(prevVnode, updatedVnode, parent) {
 			switch (t) {
 				case 'object':
 					k = genKey(c);
+					if (c.type && c.type.contextTypes) {
+						c.context = getContextByTypes(updatedVnode.context, c.type.contextTypes);
+					} else {
+						c.context = {};
+					}
 					break;
 				case 'boolean':
 					k = "#text";
@@ -813,7 +825,28 @@ function emptyElement(dom) {
 		dom.removeChild(c);
 	}
 }
-
+/**
+ * 如果instance具备getChildContext方法 则调用
+ * @param {component实例} instance 
+ * @param {当前上下文} context 
+ */
+function getChildContext(instance, context) {
+	var prevProps = instance.props;
+	if (instance.nextProps) {
+		instance.props = instance.nextProps;
+	}
+	var getContext = instance.getChildContext();
+	if (instance.nextProps) {
+		instance.props = prevProps;
+	}
+	if (getContext && typeof getContext === 'object') {
+		if (!context) {
+			context = {};
+		}
+		context = Object.assign(context, getContext);
+	}
+	return context;
+}
 
 export var REAL_SYMBOL = typeof Symbol === "function" && Symbol.iterator;
 export var FAKE_SYMBOL = "@@iterator";
@@ -845,4 +878,4 @@ export function callIteractor(iteratorFn, children) {
 	return ret;
 }
 
-function noop() {};
+function noop() { };
