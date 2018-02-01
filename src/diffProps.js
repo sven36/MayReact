@@ -22,9 +22,11 @@ export function diffProps(prev, now) {
     var hostNode = now.mayInfo.hostNode;
     var prevStyle = prev && prev.props.style;
     var nowStyle = props.style;
-
+    var isSVG = now.mayInfo.isSVG;
     if (!prev) { //setDomAttr
-        setDomAttr(hostNode, props);
+        for (var key in props) {
+            setDomAttr(hostNode, key, props[key]);
+        }
         if (nowStyle) {
             patchStyle(hostNode, prevStyle, nowStyle);
         }
@@ -32,8 +34,7 @@ export function diffProps(prev, now) {
         var prevProps = prev.props;
         for (var name in props) {
             if (name !== 'children' && !(props[name] === prevProps[name])) {
-                setDomAttr(hostNode, props);
-                break;
+                setDomAttr(hostNode, name, props[name]);
             }
         }
         for (var prop in prevProps) {
@@ -78,60 +79,70 @@ export function diffProps(prev, now) {
 export var FormElement = {
     input: 1,
     select: 1,
+    // option: 1,
+    textarea: 1
 }
 /**
  * 设置DOM属性
  * @param {*} dom 
- * @param {*} props 
+ * @param {*} key 
+ * @param {*} val 
  */
-export function setDomAttr(dom, props) {
+export function setDomAttr(dom, key, val) {
     var nodeType = dom.nodeType;
     // Don't get/set attributes on text, comment and attribute nodes
     if (nodeType === 3 || nodeType === 8 || nodeType === 2) {
         return;
     }
-    for (const key in props) {
-        if (!isEvent(key)) {
-            switch (key) {
-                case 'children':
-                case 'style':
-                case 'key':
-                    break;
-                case 'className':
-                    dom.setAttribute('class', props['className']);
-                    break;
-                case 'dangerouslySetInnerHTML':
-                    var html = props[key] && props[key].__html;
-                    dom.innerHTML = html;
-                    break;
-                default:
-                    if (dom.nodeName !== 'INPUT') {
-                        if (props[key] !== null && props[key] !== false) {
-                            //attribute 永远是字符串
-                            dom.setAttribute(key, props[key] + '');
-                        } else {
-                            //如果是null 或 false 不必添加
-                            dom.removeAttribute(key);
+    if (!isEvent(key)) {
+        switch (key) {
+            case 'children':
+            case 'style':
+            case 'key':
+                break;
+            case 'dangerouslySetInnerHTML':
+                var html = val && val.__html;
+                dom.innerHTML = html;
+                break;
+            case 'defaultValue': //input等受控组件
+                key = 'value';
+            case 'className':
+                key = 'class';
+            default:
+                if (key in dom) { //property
+                    try {
+                        if (val !== null && val !== false) {
+                            dom[key] = val;
                         }
-                    } else { //input value是property属性 直接赋值即可
-                        dom[key] = props[key];
+                    } catch (e) {
+                        dom.setAttribute(key, val + '');
                     }
-                    break;
-            }
+                } else { //attribute
+                    if (val !== null && val !== false) {
+                        //attribute 永远是字符串
+                        dom.setAttribute(key, val + '');
+                    } else {
+                        //如果是null 或 false 不必添加
+                        dom.removeAttribute(key);
+                    }
+                }
+                break;
+        }
 
-        } else {
-            var e = key.substring(2).toLowerCase();
-            var eventName = getBrowserName(key);
+    } else {
+        var e = key.substring(2).toLowerCase();
+        var eventName = getBrowserName(key);
+        var listener = dom._listener || (dom._listener = {});
+        if (!listener[e]) {
+            //添加过一次之后不必再添加;
+            addEvent(eventName);
             var hook = eventHooks[eventName];
-            if (!hook) {
-                addEvent(eventName);
-            } else {
+            if (hook) {
                 //input的change等特殊事件需要特殊处理
                 hook(dom, eventName);
             }
-            var listener = dom._listener || (dom._listener = {});
-            listener[e] = props[key];
         }
+        listener[e] = val;
     }
 }
 export function removeDomAttr(dom, props, key) {
@@ -148,10 +159,11 @@ export function removeDomAttr(dom, props, key) {
                 dom.removeAttribute('class');
                 break;
             default:
-                if (dom.nodeName !== 'INPUT') {
+                if (key in dom) {
+                    dom[key] = '';
+                } else {
                     dom.removeAttribute(key);
-                } //input 标签如果去掉其value 会把受控组件转为非受控组件 不推荐
-                break;
+                }
         }
     } else {
         var e = key.substring(2).toLowerCase();

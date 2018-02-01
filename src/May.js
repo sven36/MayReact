@@ -14,12 +14,17 @@ import {
     Children
 } from './Children';
 
+import {
+    render
+} from './MayDom'
+
 var May = {
     createElement: createElement,
     Component: Component,
     PureComponent: PureComponent,
     cloneElement: cloneElement,
-    Children: Children
+    Children: Children,
+    render: render
 }
 export {
     createElement,

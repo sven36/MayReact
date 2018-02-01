@@ -1,14 +1,15 @@
 
-/*import React from 'dist/React'
+import React from '../../src/May'
+var ReactDOM = React;
 
 describe('SVG元素', function () {
-    this.timeout(200000);
-    before(async() => {
-        await beforeHook()
-    })
-    after(async() => {
-        await afterHook(false)
-    })
+    // this.timeout(200000);
+    // before(async () => {
+    //     await beforeHook()
+    // })
+    // after(async () => {
+    //     await afterHook(false)
+    // })
     var body = document.body,
         div
     beforeEach(function () {
@@ -19,13 +20,11 @@ describe('SVG元素', function () {
         body.removeChild(div)
     })
     var rsvg = /^\[object SVG\w*Element\]$/
-    it('circle', async() => {
+    it('circle', async () => {
 
         var s = ReactDOM.render(
-            <svg><circle cx='25' cy='25' r='20' fill='green'/></svg>, div)
-        await browser
-            .pause(100)
-            .$apply()
+            <svg><circle cx='25' cy='25' r='20' fill='green' /></svg>, div)
+
         expect(rsvg.test(s.firstChild)).toBe(true)
 
     })
@@ -33,9 +32,6 @@ describe('SVG元素', function () {
 
         var s = ReactDOM.render(
             <svg><ellipse cx='25' cy='25' rx='20' ry='10' fill='green'/></svg>, div)
-        await browser
-            .pause(100)
-            .$apply()
 
         expect(rsvg.test(s.firstChild)).toBe(true)
 
@@ -45,9 +41,6 @@ describe('SVG元素', function () {
 
         var s = ReactDOM.render(
             <svg><line x1='5' y1='5' x2='45' y2='45' stroke='green'/></svg>, div)
-        await browser
-            .pause(300)
-            .$apply()
 
         expect(rsvg.test(s.firstChild)).toBe(true)
 
@@ -57,9 +50,7 @@ describe('SVG元素', function () {
 
         var s = ReactDOM.render(
             <svg><path d='M5,5 C5,45 45,45 45,5' fill="none" stroke='red'/></svg>, div)
-        await browser
-            .pause(100)
-            .$apply()
+
 
         expect(rsvg.test(s.firstChild)).toBe(true)
 
@@ -69,9 +60,7 @@ describe('SVG元素', function () {
 
         var s = ReactDOM.render(
             <svg><polygon points='5,5 45,45 5,45 45,5' fill="none" stroke='red'/></svg>, div)
-        await browser
-            .pause(100)
-            .$apply()
+
         expect(rsvg.test(s.firstChild)).toBe(true)
 
     })
@@ -80,9 +69,7 @@ describe('SVG元素', function () {
 
         var s = ReactDOM.render(
             <svg><polyline points='5,5 45,45 5,45 45,5' fill="none" stroke='red'/></svg>, div)
-        await browser
-            .pause(100)
-            .$apply()
+  
         expect(rsvg.test(s.firstChild)).toBe(true)
 
     })
@@ -98,9 +85,7 @@ describe('SVG元素', function () {
             height='40'
             fill="green"
             stroke='red'/></svg>, div)
-        await browser
-            .pause(100)
-            .$apply()
+
         expect(rsvg.test(s.firstChild)).toBe(true)
 
     })
@@ -115,22 +100,18 @@ describe('SVG元素', function () {
             <use x='30' y='30' xlinkHref='#rect'/>
         </svg>, div)
 
-        await browser
-            .pause(100)
-            .$apply()
         expect(rsvg.test(s.firstChild)).toBe(true)
 
     })
-    it('attribute throw error', async() => {
+    //svg一般用的不会太复杂，先支持比较简单的
+    /*it('attribute throw error', async() => {
 
         var a = {}
         a.toString = function () {
             throw "xxx"
         }
         var s = ReactDOM.render(React.createElement('div', {aaa: a}), div)
-        await browser
-            .pause(100)
-            .$apply()
+
         expect(s.getAttribute('aaa')).toBeNull()
     })
 
@@ -146,13 +127,11 @@ describe('SVG元素', function () {
         ReactDOM.render(
             <Test/>, div)
 
-        await browser
-            .pause(300)
-            .$apply()
+
         var el = div.getElementsByTagName('use')
         expect(el.length).toBe(1)
         expect(el[0].getAttribute('xlink:href')).toBe('#twitter')
         expect(el[0].getAttribute('xlink:role')).toBe('#aaa')
-    })
+    })*/
 
-})*/
+})

@@ -14,6 +14,9 @@ import {
 
 //存放生命周期中的 DidMount DidUpdate以及ref回调
 var lifeCycleQueue = mayQueue.lifeCycleQueue;
+var NAMESPACE = {
+	svg: 'http://www.w3.org/2000/svg'
+}
 export function render(vnode, container, callback) {
 	return renderByMay(vnode, container, callback);
 }
@@ -61,13 +64,15 @@ var renderByMay = function (vnode, container, callback) {
 
 function mountDOM(vnode, isSVG) {
 	var vtype = vnode.type;
-	var hostNode = !isSVG ? document.createElement(vtype) : document.createElementNS("http://www.w3.org/2000/svg", vnode.type);
+	vnode.mayInfo.isSVG = isSVG;
+	var hostNode = !isSVG ? document.createElement(vtype) : document.createElementNS(NAMESPACE.svg, vnode.type);
 	if (!Refs.currentOwner) {
 		Refs.currentOwner = hostNode;
 		hostNode.refs = {};
 	}
 	vnode.mayInfo.hostNode = hostNode;
 	diffProps(null, vnode);
+
 	var children = vnode.props.children || null;
 	if (children && !Array.isArray(children)) {
 		children = [children];
@@ -111,21 +116,28 @@ function mountDOM(vnode, isSVG) {
 		}
 		vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
 	}
-	//如果是受控组件input select之类需要特殊处理下
 	if (FormElement[vtype]) {
-		if (vtype === 'select') {
-			if (vnode.props['value']) {
-				var _val = vnode.props['value'];
-				var _optionsChilds = [].slice.call(hostNode.childNodes);
-				if (_optionsChilds) {
-					for (var k = 0; k < _optionsChilds.length; k++) {
-						var oChild = _optionsChilds[k];
-						oChild.value !== _val ? oChild.selected = false : oChild.selected = true;
+		//如果是受控组件input select之类需要特殊处理下
+		if (vnode.props) {
+			if (!hostNode._listener || hostNode._listener.length === 0) {
+				console.warn('非受控组件');
+			}
+			var _val = vnode.props['value'] || vnode.props['defaultValue'] || '';
+			//记录第一次render的值 非受控组件值不可变
+			hostNode._lastValue = _val;
+			switch (vtype) {
+				case 'select':
+					var _optionsChilds = [].slice.call(hostNode.childNodes);
+					if (_optionsChilds) {
+						for (var k = 0; k < _optionsChilds.length; k++) {
+							var oChild = _optionsChilds[k];
+							oChild.value !== _val ? oChild.selected = false : oChild.selected = true;
+						}
 					}
-				}
-
+					break;
 			}
 		}
+
 	}
 	if (vnode.ref) {
 		var ref = vnode.ref;
@@ -149,6 +161,10 @@ function mountComposite(vnode, isSVG) {
 	}
 	var inst = vnode.mayInfo.instance || null;
 	if (rendered) {
+		if (!isSVG) {
+			//svg的子节点namespace也是svg
+			isSVG = rendered.mtype === 3;
+		}
 		//递归遍历 深度优先
 		hostNode = mountStrategy[rendered.mtype](rendered, isSVG);
 		//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
@@ -359,12 +375,52 @@ export function reRender(instance) {
 
 function updateDOM(prevVnode, newVnode) {
 	var hostNode = (prevVnode && prevVnode.mayInfo.hostNode) || null;
+	var vtype = newVnode.type;
 	if (!newVnode.mayInfo.hostNode) {
 		newVnode.mayInfo.hostNode = hostNode;
 	}
+	var isSVG = hostNode && hostNode.namespaceURI === NAMESPACE.svg;
+	if (isSVG) {
+		newVnode.mayInfo.isSVG = true;
+	}
 	diffProps(prevVnode, newVnode);
 	diffChildren(prevVnode, newVnode, hostNode);
+	newVnode.mayInfo.vChildren = transformChildren(newVnode, hostNode);
+	if (FormElement[vtype]) {
+		//如果是受控组件input select之类需要特殊处理下
+		if (newVnode.props) {
+			var isControlled = true;
+			if (!hostNode._listener || hostNode._listener.length === 0 || newVnode.props['value'] === 'undefined') {
+				console.warn('非受控组件');
+				isControlled = false;
+			}
+			var _val;
+			if (isControlled) {
+				_val = newVnode.props['value'] || hostNode._lastValue || '';
 
+				switch (vtype) {
+					case 'select':
+						var _optionsChilds = [].slice.call(hostNode.childNodes);
+						if (_optionsChilds) {
+							for (var k = 0; k < _optionsChilds.length; k++) {
+								var oChild = _optionsChilds[k];
+								oChild.value !== _val ? oChild.selected = false : oChild.selected = true;
+							}
+						}
+						break;
+					case 'input':
+						//如果reRender时 dom去掉了value属性 则其变为非受控组件 value取上一次的值
+						hostNode.value = _val;
+						break;
+				}
+			} else {
+				//非受控组件值不会变
+				_val = hostNode._lastValue || newVnode.props['defaultValue'] || '';
+				hostNode.value = _val;
+			}
+		}
+
+	}
 	return hostNode;
 }
 
@@ -878,4 +934,4 @@ export function callIteractor(iteratorFn, children) {
 	return ret;
 }
 
-function noop() { };
+function noop() {};

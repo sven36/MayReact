@@ -27,11 +27,13 @@ import {
 // });
 // https://github.com/facebook/react/blob/master/src/renderers/__tests__/EventPluginHub-test.js
 
+
+// 已测试
 describe("isEventSupported", function() {
     // this.timeout(200000);
 
 
-   /* it('should prevent non-function listeners, at dispatch', () => {
+    /*it('should prevent non-function listeners, at dispatch', () => {
       spyOn(console, 'error');
       var node = ReactTestUtils.renderIntoDocument(
         <div onClick="not a function" />,

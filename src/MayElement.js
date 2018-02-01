@@ -16,7 +16,7 @@ export function createElement(type, config, children) {
     var _type = typeof type;
     switch (_type) {
         case 'string': //HtmlElement 1  SVG 3
-            mtype = _type !== 'svg' ? 1 : 3;
+            mtype = type !== 'svg' ? 1 : 3;
             break;
         case 'function': //component 或functionless
             mtype = 2;
@@ -48,7 +48,7 @@ export function createElement(type, config, children) {
             array.push(arguments[i + 2]);
         }
         props.children = array;
-    } else if (len === 1) {// && children
+    } else if (len === 1) { // && children
         props.children = children;
     }
 
