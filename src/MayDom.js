@@ -5,7 +5,8 @@ import {
 
 import {
 	diffProps,
-	FormElement
+	FormElement,
+	getIsControlled
 } from './diffProps'
 
 import {
@@ -116,28 +117,12 @@ function mountDOM(vnode, isSVG) {
 		}
 		vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
 	}
+
 	if (FormElement[vtype]) {
 		//如果是受控组件input select之类需要特殊处理下
 		if (vnode.props) {
-			if (!hostNode._listener || hostNode._listener.length === 0) {
-				console.warn('非受控组件');
-			}
-			var _val = vnode.props['value'] || vnode.props['defaultValue'] || '';
-			//记录第一次render的值 非受控组件值不可变
-			hostNode._lastValue = _val;
-			switch (vtype) {
-				case 'select':
-					var _optionsChilds = [].slice.call(hostNode.childNodes);
-					if (_optionsChilds) {
-						for (var k = 0; k < _optionsChilds.length; k++) {
-							var oChild = _optionsChilds[k];
-							oChild.value !== _val ? oChild.selected = false : oChild.selected = true;
-						}
-					}
-					break;
-			}
+			getIsControlled(hostNode, vnode);
 		}
-
 	}
 	if (vnode.ref) {
 		var ref = vnode.ref;
@@ -151,6 +136,8 @@ function mountDOM(vnode, isSVG) {
 	}
 	return hostNode;
 }
+
+
 
 function mountComposite(vnode, isSVG) {
 	var hostNode = null;
@@ -389,15 +376,10 @@ function updateDOM(prevVnode, newVnode) {
 	if (FormElement[vtype]) {
 		//如果是受控组件input select之类需要特殊处理下
 		if (newVnode.props) {
-			var isControlled = true;
-			if (!hostNode._listener || hostNode._listener.length === 0 || newVnode.props['value'] === 'undefined') {
-				console.warn('非受控组件');
-				isControlled = false;
-			}
+			var isControlled = getIsControlled(hostNode, vnode);
 			var _val;
 			if (isControlled) {
 				_val = newVnode.props['value'] || hostNode._lastValue || '';
-
 				switch (vtype) {
 					case 'select':
 						var _optionsChilds = [].slice.call(hostNode.childNodes);
@@ -413,10 +395,6 @@ function updateDOM(prevVnode, newVnode) {
 						hostNode.value = _val;
 						break;
 				}
-			} else {
-				//非受控组件值不会变
-				_val = hostNode._lastValue || newVnode.props['defaultValue'] || '';
-				hostNode.value = _val;
 			}
 		}
 
@@ -934,4 +912,4 @@ export function callIteractor(iteratorFn, children) {
 	return ret;
 }
 
-function noop() {};
+function noop() { };

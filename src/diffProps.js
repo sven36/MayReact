@@ -13,6 +13,7 @@ import {
 import {
     mayQueue
 } from './util';
+import { hostname } from 'os';
 
 //之前是 mount的时候setDomAttr一个方法 diff的时候diffProps一个方法
 //后来发现 写着写着要修改点setDomAttr的内容 diff的时候还要在判断一遍
@@ -208,7 +209,85 @@ export function patchStyle(dom, prevStyle, newStyle) {
         }
     }
 }
-
+/**
+ input, select, textarea这几个元素如果指定了value/checked的**状态属性**，就会包装成受控组件或非受控组件
+受控组件是指，用户除了为它指定**状态属性**，还为它指定了onChange/onInput/disabled等用于控制此状态属性
+变动的属性
+反之，它就是非受控组件，非受控组件会在框架内部添加一些事件，阻止**状态属性**被用户的行为改变，只能被setState改变
+*/
+var eGroup = [
+    { 'onChange': 1, 'onInput': 1, 'readOnly': 1, 'disabled': 1 }, { 'onChange': 1, 'onClick': 1, 'readOnly': 1, 'disabled': 1 }, { 'onChange': 1, 'disabled': 1 }
+]
+export function getIsControlled(hostNode, vnode) {
+    var _val = vnode.props['value'] || vnode.props['defaultValue'] || '';
+    //记录第一次render的值 非受控组件值不可变
+    var type = hostNode.type;
+    var hasValue, isControlled, eObj, event, ename;
+    var vprops = vnode.props;
+    switch (type) {
+        case 'text':
+        case 'textarea':
+            //非受控组件有value属性 但是没有绑定修改value的onChange等事件
+            hasValue = 'value' in vprops;
+            ename = 'oninput';
+            eObj = eGroup[0];
+            //如果是非受控组件那么我们需要阻止用户改变数据
+            event = preventInput;
+            break;
+        case 'checkbox':
+        case 'radio':
+            hasValue = 'checked' in vprops;
+            ename = 'onclick';
+            eObj = eGroup[1];
+            event = preventClick;
+            break;
+        case 'select-one':
+        case 'select-multiple':
+            hasValue = 'value' in vprops;
+            ename = 'onchange';
+            eObj = eGroup[2];
+            event = preventChange;
+            var _optionsChilds = [].slice.call(hostNode.childNodes);
+            if (_optionsChilds) {
+                for (var k = 0; k < _optionsChilds.length; k++) {
+                    var oChild = _optionsChilds[k];
+                    if (oChild.value === _val) {
+                        oChild.selected = true;
+                        hostNode._selectIndex = k;
+                    }
+                }
+            }
+            break;
+    }
+    isControlled = hasValue && hasEventProps(vprops, eObj);
+    if (!isControlled) {
+        hostNode._lastValue = _val;
+        console.warn(vnode.type + (vprops['type'] ? ('type=[' + vprops['type'] + ']') : '') + '元素为非受控组件，用户无法通过输入改变元素的值;更多信息参见React官方文档https://reactjs.org/docs/uncontrolled-components.html');
+        setDomAttr(hostNode, ename, event);
+    }
+    return isControlled;
+}
+function preventInput(e) {
+    var target = e.target;
+    var name = e.type === "textarea" ? "innerHTML" : "value";
+    target[name] = target._lastValue;
+}
+function preventClick(e) {
+    e.preventDefault();
+}
+function preventChange(e) {
+    var target = e.target;
+    if (target._selectIndex) {
+        target.options[target._selectIndex].selected = true;
+    }
+}
+function hasEventProps(props, events) {
+    for (var key in props) {
+        if (events[key]) {
+            return true;
+        }
+    }
+}
 const cssSuffix = {
     //需要加后缀如 px s(秒)等css属性摘出来
     //其实用正则更简洁一些,不过可能 可读性可维护性不如key value
