@@ -35,9 +35,9 @@ describe('node模块', function () {
         div = document.createElement('div')
         body.appendChild(div)
     })
-    // afterEach(function () {
-    //     body.removeChild(div)
-    // })
+    afterEach(function () {
+        body.removeChild(div)
+    })
     // it('连续点击一个DIV', async () => {
     //     div.innerHTML = '看到我吗？'
     //     var a = 1
@@ -49,7 +49,7 @@ describe('node模块', function () {
     //     await browser.click(div).pause(100).$apply()
     //     expect(a).toBe(3)
     // });
-    /*it('输出简单的元素', async () => {
+    it('输出简单的元素', async () => {
 
         var s = React.render(<div>222</div>, div)
         //组件直接返回元素节点
@@ -408,7 +408,7 @@ describe('node模块', function () {
         //     .setValue('#node5', 'yyyy').pause(300).$apply()
 
 
-    })*/
+    })
     it('非受控组件textarea的value不可变', async () => {
 
         class TextArea extends React.Component {
@@ -432,7 +432,7 @@ describe('node模块', function () {
 
 
     })
-    /*it('非受控组件checkbox的checked不可变', async () => {
+    it('非受控组件checkbox的checked不可变', async () => {
 
         class Checkbox extends React.Component {
             constructor() {
@@ -535,9 +535,9 @@ describe('node模块', function () {
         // expect(s.mayInst.hostNode.children[1].selected).toBe(true)
 
 
-    })*/
+    })
 
-    /*it('父子组件间的通信', async () => {
+    it('父子组件间的通信', async () => {
         class Select extends React.Component {
             constructor(props) {
                 super(props)
@@ -951,7 +951,7 @@ describe('node模块', function () {
 
         test(<Comp />);
         expect(div.firstChild.style.color).toBe('');
-    });*/
+    });
 
     it('子组件的DOM节点改变了，会同步父节点的DOM', async () => {
         var s, s2
@@ -986,10 +986,10 @@ describe('node模块', function () {
             }
         }
         var s = React.render(<App />, div);
-        // expect(s.mayInst.hostNode ).toBe(s2.mayInst.hostNode);
+        expect(s.mayInst.hostNode ).toBe(s2.mayInst.hostNode);
         s2.setState({value: 0});//子组件改变后 父组件的ref跟着变动
-        expect(s.updater._hostNode ).toBe(s2.updater._hostNode);
-        expect(s.updater._hostNode.nodeName).toBe('STRONG');
+        // expect(s.updater._hostNode ).toBe(s2.updater._hostNode);
+        // expect(s.updater._hostNode.nodeName).toBe('STRONG');
     })
 
 })

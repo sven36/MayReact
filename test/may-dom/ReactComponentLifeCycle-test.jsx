@@ -481,8 +481,8 @@ function getLifeCycleState(instance) {
       'inner componentWillUnmount',
     ]);
   });
-
- /* it('calls effects on module-pattern component', function() {
+	//暂不支持这种形式的component
+ /*it('calls effects on module-pattern component', function() {
     const log = [];
     function Parent() {
       return {
