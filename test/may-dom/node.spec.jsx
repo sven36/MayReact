@@ -8,6 +8,9 @@ var ReactDOM = {
 }
 React.render = render;
 
+// var React = require('react');
+// var ReactDOM = require('react-dom');
+
 // import React from "../../dist/ReactANU";
 // var ReactDOM = React;
 // var ReactTestUtils = { Simulate: {} };
@@ -506,7 +509,7 @@ describe('node模块', function () {
         expect(div.getElementsByTagName('span').length).toBe(1)
 
 
-    })*/
+    })
      it('非受控组件select的value不可变', async () => {
         class Com extends React.Component {
             constructor() {
@@ -532,9 +535,9 @@ describe('node模块', function () {
         // expect(s.mayInst.hostNode.children[1].selected).toBe(true)
 
 
-    })
+    })*/
 
-    it('父子组件间的通信', async () => {
+    /*it('父子组件间的通信', async () => {
         class Select extends React.Component {
             constructor(props) {
                 super(props)
@@ -586,13 +589,10 @@ describe('node模块', function () {
         var s = React.render(<App />, div)
 
         expect(s.refs.sss.value).toBe('南京')
-        // await browser
-        //     .selectByVisibleText('#communicate', '北京').pause(100)
-        //     .$apply()
-        // expect(s.refs.sss.value).toBe('北京')
+
 
     })
-    /*it('empty Component', async () => {
+    it('empty Component', async () => {
         class Empty extends React.Component {
             render() {
                 return null
@@ -621,13 +621,11 @@ describe('node模块', function () {
 
 
         var s = React.render(<App />, div)
-        await browser
-            .pause(100)
-            .$apply()
+
         expect(s.refs.a.value).toBe('南京')
-        await browser.setValue(s.refs.a, '北京').pause(100)
-            .$apply()
-        expect(s.refs.a.value).toBe('北京')
+        // await browser.setValue(s.refs.a, '北京').pause(100)
+        //     .$apply()
+        // expect(s.refs.a.value).toBe('北京')
 
     })
     it('移除组件', async () => {
@@ -666,7 +664,7 @@ describe('node模块', function () {
                 index = 0
                 this.forceUpdate()
                 setTimeout(function () {
-                    console.log('应该输出', str)
+                    console.warn('应该输出', str)
                 })
             }
             render() {
@@ -682,9 +680,9 @@ describe('node模块', function () {
         };
 
         var s = React.render(<App />, div)
-
-        await browser.pause(100).click(s.refs.a).pause(100)
-            .$apply()
+        ReactTestUtils.Simulate.click(s.refs.a);
+        // await browser.pause(100).click(s.refs.a).pause(100)
+        //     .$apply()
         expect(str).toBe('xxxx yyyy')
 
     })
@@ -709,9 +707,10 @@ describe('node模块', function () {
         };
 
         var s = React.render(<App />, div)
+        ReactTestUtils.Simulate.click(s.refs.a);
 
-        await browser.pause(100).click(s.refs.a).pause(100)
-            .$apply()
+        // await browser.pause(100).click(s.refs.a).pause(100)
+        //     .$apply()
         expect(div.getElementsByTagName('p').length).toBe(1)
 
     })
@@ -737,9 +736,8 @@ describe('node模块', function () {
 
         var s = React.render(<App />, div)
 
-        await browser.pause(100).$apply()
         expect(div.getElementsByTagName('p').length).toBe(4)
-        await browser.click(s.refs.a).pause(100).$apply()
+        ReactTestUtils.Simulate.click(s.refs.a);
         expect(div.getElementsByTagName('p').length).toBe(1)
     })
 
@@ -781,9 +779,8 @@ describe('node模块', function () {
         }
         var s = React.render(<App />, div)
 
-        await browser.pause(100).$apply()
         expect(div.getElementsByTagName('strong').length).toBe(1)
-        expect(s).toInstanceOf(App)
+        expect(s instanceof App).toBe(true)
         //expect(div.getElementsByTagName('p').length).toBe(1)
     })
     it('一个元素拥有多个实例2', async () => {
@@ -829,7 +826,6 @@ describe('node模块', function () {
         }
         var s = React.render(<App />, div)
 
-        await browser.pause(100).$apply()
         expect(div.getElementsByTagName('strong').length).toBe(1)
         s.forceUpdate()
         expect(div.getElementsByTagName('strong').length).toBe(1)
@@ -864,14 +860,13 @@ describe('node模块', function () {
         }
         var s = React.render(<App />, div)
 
-        await browser.pause(100).$apply()
         expect(div.getElementsByTagName('strong').length).toBe(1)
         s.handleClick()
         expect(div.getElementsByTagName('em').length).toBe(1)
         //expect(div.getElementsByTagName('p').length).toBe(1)
     })
 
-    it('复杂的孩子转换', async () => {
+   it('复杂的孩子转换', async () => {
         var index = 0
         var map = [
             <div >1111<p>ddd</p><span>333</span><Link /></div>,
@@ -906,7 +901,6 @@ describe('node模块', function () {
         }
         var s = React.render(<App />, div)
 
-        await browser.pause(100).$apply()
         function getString(nodes) {
             var str = []
             for (var i = 0, node; node = nodes[i++];) {
@@ -916,14 +910,12 @@ describe('node模块', function () {
         }
         expect(getString(div.firstChild.childNodes)).toBe('#text p span strong')
         s.change(100)
-        await browser.pause(100).$apply()
         expect(getString(div.firstChild.childNodes)).toBe('em span #text span b i')
         s.change(100)
-        await browser.pause(100).$apply()
         expect(getString(div.firstChild.childNodes)).toBe('span')
     })
 
-    it('对一个容器节点反复渲染组件或元素 ', async () => {
+     it('对一个容器节点反复渲染组件或元素 ', async () => {
         class Comp extends React.Component {
             render() {
                 return <span>span in a component</span>;
@@ -935,13 +927,10 @@ describe('node模块', function () {
         }
 
         test(<Comp />);
-        await browser.pause(50).$apply()
         test(<div>just a div</div>);
-        await browser.pause(50).$apply()
         test(<Comp />);
-        await browser.pause(50).$apply()
 
-        expect(div.firstChild.innerHTML).to.equal('span in a component');
+        expect(div.firstChild.innerHTML).toBe('span in a component');
     });
 
     it('切换style对象', async () => {
@@ -957,14 +946,12 @@ describe('node模块', function () {
         }
 
         test(<Comp />);
-        await browser.pause(50).$apply()
-        expect(div.firstChild.style.color).to.equal('red');
+        expect(div.firstChild.style.color).toBe('red');
         index = 0
 
         test(<Comp />);
-        await browser.pause(50).$apply()
-        expect(div.firstChild.style.color).to.equal('');
-    });
+        expect(div.firstChild.style.color).toBe('');
+    });*/
 
     it('子组件的DOM节点改变了，会同步父节点的DOM', async () => {
         var s, s2
@@ -999,11 +986,10 @@ describe('node模块', function () {
             }
         }
         var s = React.render(<App />, div);
-        await browser.pause(200).$apply();
-        expect(s.mayInst.hostNode ).toBe(s2.mayInst.hostNode);
-        s2.setState({value: 0});
-        expect(s.mayInst.hostNode ).toBe(s2.mayInst.hostNode);
-        expect(s.mayInst.hostNode.nodeName).toBe('STRONG');
-    })*/
+        // expect(s.mayInst.hostNode ).toBe(s2.mayInst.hostNode);
+        s2.setState({value: 0});//子组件改变后 父组件的ref跟着变动
+        expect(s.updater._hostNode ).toBe(s2.updater._hostNode);
+        expect(s.updater._hostNode.nodeName).toBe('STRONG');
+    })
 
 })

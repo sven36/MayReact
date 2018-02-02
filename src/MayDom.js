@@ -58,6 +58,17 @@ var renderByMay = function (vnode, container, callback) {
 	if (callback) { //render的 callback
 		callback();
 	}
+	if (vnode.mayInfo.instance) {
+		//render之后lifeState也初始化为0；
+		vnode.mayInfo.instance.mayInst.lifeState = 0;
+		//当我开始着手解决 层层嵌套的component 最底层的那个setState触发的时候lifeState并不为0
+		//因为我不能确定其是否有componentDidMount的回调，它在这个回调setState是需要放到下一周期处理的
+		//一种办法是该instance如果具备componentDidMount我把其lifeState标个值如10 setState的时候判断
+		//另一种办法就是我新建一个instance队列 instance.pendingCallback=componentDidMount
+		//然后我每次render完再遍历这个队列有回调就调用 这貌似就是ANU的逻辑吧~
+		//快写完了我才发现~惭愧~看来还是自己写写好，不如琢如磨，怎么对这流程了如指掌，不胸有成竹又如何找寻这
+		//最优方法
+	}
 	Refs.currentOwner = null;
 	container._lastVnode = vnode;
 	return result;
@@ -121,7 +132,9 @@ function mountDOM(vnode, isSVG) {
 	if (FormElement[vtype]) {
 		//如果是受控组件input select之类需要特殊处理下
 		if (vnode.props) {
+			var _val = vnode.props['value'] || vnode.props['defaultValue'] || '';
 			getIsControlled(hostNode, vnode);
+			hostNode._lastValue = _val;
 		}
 	}
 	if (vnode.ref) {
@@ -152,9 +165,15 @@ function mountComposite(vnode, isSVG) {
 			//svg的子节点namespace也是svg
 			isSVG = rendered.mtype === 3;
 		}
+		//为2代表开始render children
+		//children 初次render的生命周期willMount DidMount
+		//调用父组件的setState 都放在父组件的下一周期;
+		inst && (inst.mayInst.lifeState = 2);
+		//用于子组件改变同步父组件的hostNode
+		vnode.mayInfo.instance && (rendered.mayInfo.parentInstance = vnode.mayInfo.instance)
 		//递归遍历 深度优先
 		hostNode = mountStrategy[rendered.mtype](rendered, isSVG);
-		//既然dom diff必然需要分类一下children以方便diff  那就把这步提前 render时就执行
+		//dom diff需要分类一下children以方便diff
 		rendered.mayInfo.vChildren = transformChildren(rendered, hostNode);
 		rendered.mayInfo.hostNode = hostNode;
 		vnode.mayInfo.hostNode = hostNode;
@@ -169,8 +188,9 @@ function mountComposite(vnode, isSVG) {
 		}
 	}
 	if (inst && inst.componentDidMount) {
-		inst.mayInst.lifeState = 'beforeComponentDidMount'
-		lifeCycleQueue.push(inst.componentDidMount.bind(inst));
+		var cb = inst.componentDidMount.bind(inst);
+		cb.instance = inst;
+		lifeCycleQueue.push(cb);
 	}
 	if (vnode.ref) {
 		var ref = vnode.ref;
@@ -224,7 +244,7 @@ function buildComponentFromVnode(vnode) {
 	var Ctor = vnode.type;
 	//Component  PureComponent
 	if (Ctor.prototype && Ctor.prototype.render) {
-		//创建一个原型指向Component的对象 不new的话需要手动绑定props的作用域
+		//创建一个原型指向Component的对象
 		inst = new Ctor(props, key, ref, context);
 		if (!inst.mayInst) {
 			//新建个对象存放各种信息
@@ -232,12 +252,15 @@ function buildComponentFromVnode(vnode) {
 		}
 		inst.mayInst.mountOrder = mountOrder;
 		mountOrder++;
+		//_lifeState来控制生命周期中调用setState的作用
+		//为0代表刚创建完component实例 (diff之后也会重置为0)
+		inst.mayInst.lifeState = 0;
+
 		if (inst.componentWillMount) {
-			//_lifeState来控制生命周期中调用setState的作用
-			//刚创建instance componentWillMount调用setState合并state即可
-			inst.mayInst.lifeState = 'beforeComponentWillMount';
+			//此时如果在componentWillMount调用setState合并state即可
+			//为1代表componentWillMount
+			inst.mayInst.lifeState = 1;
 			inst.componentWillMount();
-			inst.mayInst.lifeState = 'afterComponentWillMount';
 		}
 		if (inst.mayInst.mergeStateQueue) {
 			inst.state = mergeState(inst);
@@ -248,7 +271,7 @@ function buildComponentFromVnode(vnode) {
 		}
 		if (context) {
 			inst.context = getContextByTypes(context, Ctor.contextTypes);
-			renderedVnode.context = context;
+			renderedVnode && (renderedVnode.context = context);
 		}
 		// vnode.type === 'function' 代表其为Component Component中才能setState
 		//setState会触发reRender 故保存有助于domDiff的参数
@@ -293,7 +316,9 @@ export function reRender(instance) {
 	var isEmpty = !prevRendered;
 	var hostNode = !isEmpty && prevRendered.mayInfo.hostNode;
 	var skip = false;
-
+	//lifeState为3组件开始diff
+	//WillReceive WillUpdate render DidUpdate等周期setState放到下一周期;
+	instance.mayInst.lifeState = 3;
 	var newState = mergeState(instance);
 	//forceUpdate时 忽略shouldComponentUpdate
 	if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, newState, context) === false) {
@@ -306,10 +331,9 @@ export function reRender(instance) {
 		instance.mayInst.dirty = false;
 		return;
 	}
-	instance.mayInst.lifeState = 'beforeComponentRerender';
 	var updated = instance.render(props, context);
 	instance.mayInst.rendered = updated;
-	updated.context = context;
+	updated && (updated.context = context);
 	if (!updated) {
 		disposeVnode(prevRendered);
 		return;
@@ -337,25 +361,28 @@ export function reRender(instance) {
 		hostNode.parentNode.replaceChild(dom, hostNode);
 		updated.mayInfo.hostNode = dom;
 		hostNode = dom;
+		if(instance.parentInstance){
+
+		}
 	}
 	updated.mayInfo.vChildren = transformChildren(updated, hostNode);
 	instance.mayInst.forceUpdate = null;
 	instance.mayInst.hostNode = hostNode;
 	if (instance.componentDidUpdate) {
-		//执行完 componentWillUpdate 
-		instance.mayInst.lifeState = 'beforeComponentDidUpdate';
-		if (instance.mayInst.renderInNextCycle) {
+		if (instance.mayInst.needNextRender) {
 			instance.componentDidUpdate(instance.props, instance.state, instance.context);
-			//执行完 componentDidUpdate
-			instance.mayInst.lifeState = 'afterComponentDidUpdate';
 		} else {
 			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.props, instance.state, instance.context));
 		}
 	}
-	//如果没有再次diff的标识 设置_dirty为false
-	if (!instance.mayInst.renderInNextCycle) {
+	//needNextRender情况是 子组件在diff生命周期(如WillReceiveProps)调用父组件的setState
+	//这种情况下父组件需要再进行一次diff，不过本地diff完成时c.mayInst.dirty 会为false 所以需要
+	//mayInst.dirty为true;ReactCompositeComponentState-test 的should update state when called from child cWRP
+	if (!instance.mayInst.needNextRender) {
 		instance.mayInst.dirty = false;
+		instance.mayInst.needNextRender = false;
 	}
+
 	//防止setState currentOwner混乱
 	Refs.currentOwner = null;
 }
@@ -376,8 +403,8 @@ function updateDOM(prevVnode, newVnode) {
 	if (FormElement[vtype]) {
 		//如果是受控组件input select之类需要特殊处理下
 		if (newVnode.props) {
-			var isControlled = getIsControlled(hostNode, vnode);
-			var _val;
+			var isControlled = getIsControlled(hostNode, newVnode);
+			var _val, hasSelected;
 			if (isControlled) {
 				_val = newVnode.props['value'] || hostNode._lastValue || '';
 				switch (vtype) {
@@ -386,15 +413,23 @@ function updateDOM(prevVnode, newVnode) {
 						if (_optionsChilds) {
 							for (var k = 0; k < _optionsChilds.length; k++) {
 								var oChild = _optionsChilds[k];
-								oChild.value !== _val ? oChild.selected = false : oChild.selected = true;
+								if (oChild.value === _val) {
+									oChild.selected = true;
+									hasSelected = true;
+								} else {
+									oChild.selected = false;
+								}
+							}
+							if (!hasSelected) { //如果给定value没有选中的  默认第一个
+								hostNode.value = _optionsChilds[0].value;
 							}
 						}
 						break;
-					case 'input':
-						//如果reRender时 dom去掉了value属性 则其变为非受控组件 value取上一次的值
-						hostNode.value = _val;
-						break;
+
 				}
+			} else {
+				//如果reRender时 dom去掉了value属性 则其变为非受控组件 value取上一次的值
+				hostNode.value = hostNode._lastValue || '';
 			}
 		}
 
@@ -414,10 +449,15 @@ function updateComposite(prevVnode, newVnode) {
 	//empty代表prevVnode为null
 	var isEmpty = !prevVnode.mayInfo.rendered;
 	var hostNode = prevVnode.mayInfo.hostNode;
-	var newDom, newRendered;
+	var newDom, newRendered, prevState;
 	var skip = false;
 	if (instance) {
-
+		//需要兼容componentWillReceiveProps直接this.state={///}的情况
+		//先保存下之前的state
+		prevState = instance.state;
+		//lifeState为3组件开始diff
+		//WillReceive WillUpdate render DidUpdate等周期setState放到下一周期;
+		instance.mayInst.lifeState = 3;
 		//用于mergeState如果setState传入一个function s.call(instance, newState, instance.nextProps || instance.props);
 		//其参数应当是newState nextProps
 		instance.nextProps = newVnode.props;
@@ -426,19 +466,23 @@ function updateComposite(prevVnode, newVnode) {
 			context = getChildContext(instance, context);
 		}
 		var newState = mergeState(instance);
-		instance.mayInst.lifeState = 'beforeComponentWillReceiveProps';
 		if (prevVnode !== newVnode || prevVnode.context !== context) {
 			if (instance.componentWillReceiveProps) {
+				//componentWillReceiveProps中调用了setState 合并state
+				instance.mayInst.lifeState = 4;
 				instance.componentWillReceiveProps(newVnode.props, context);
+				if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
+					newState = mergeState(instance);
+				} else { //this.state={///}的情况
+					if (instance.state !== prevState) {
+						newState = instance.state;
+						instance.state = prevState;
+					}
+				}
 			}
 			instance.props = newVnode.props;
-			// 如果在componentWillReceiveProps中调用了setState
-			if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
-				newState = mergeState(instance);
-			}
 		}
 
-		instance.mayInst.lifeState = 'beforeShouldComponentUpdate';
 		//shouldComponentUpdate 返回false 则不进行子组件渲染
 		if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(newVnode.props, newState, context) === false) {
 			slip = true;
@@ -457,7 +501,6 @@ function updateComposite(prevVnode, newVnode) {
 		}
 
 		var prevRendered = prevVnode.mayInfo.rendered;
-		instance.mayInst.lifeState = 'beforeComponentRerender';
 		newRendered = instance.render();
 
 		newRendered && (newRendered.context = context);
@@ -485,12 +528,11 @@ function updateComposite(prevVnode, newVnode) {
 			//如果之前node为空 或 新render的为空 直接释放之前节点
 			disposeVnode(prevRendered);
 		}
-		//如果没有再次diff的标识 设置_dirty为false
-		if (!instance.mayInst.renderInNextCycle) {
+		if (!instance.mayInst.needNextRender) {
 			instance.mayInst.dirty = false;
+			instance.mayInst.needNextRender = false;
 		}
 		if (instance.componentDidUpdate) {
-			instance.mayInst.lifeState = 'beforeComponentDidUpdate';
 			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.state, instance.props, instance.context));
 		}
 		if (newVnode.ref && typeof newVnode.ref === 'function') {
@@ -774,8 +816,6 @@ function disposeVnode(vnode) {
 			vnode.mayInfo.instance.setState = noop;
 		}
 		if (vnode.mayInfo.instance.componentWillUnmount) {
-			//componentWillUnmount中触发setState 忽略
-			vnode.mayInfo.instance.mayInst.lifeState = 'beforeComponentWillUnmount';
 			vnode.mayInfo.instance.componentWillUnmount();
 		}
 		vnode.mayInfo.instance.refs = null;
@@ -912,4 +952,4 @@ export function callIteractor(iteratorFn, children) {
 	return ret;
 }
 
-function noop() { };
+function noop() {};

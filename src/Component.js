@@ -36,19 +36,18 @@ Component.prototype.setState = function (state, callback) {
         }
         return;
     }
+
     switch (lifeState) {
-        case 'beforeComponentWillUnmount': //componentWillUnmount 触发setState忽略
+        case 4: //componentWillReceiveProps触发setState会合并state
+        case 1: //componentWillMount 触发setState会合并state
             return;
-        case 'beforeComponentWillMount': //componentWillMount 触发setState会合并state
-            this.state = mergeState(this);
-            return;
-        case 'beforeComponentRerender': //子组件componentWillReceiveProps 调用父组件的setState 触发setState会放到下一周期
-            this.mayInst.renderInNextCycle = true;
-        case 'beforeComponentWillReceiveProps': //ComponentWillReceiveProps 中setState
-        case 'afterComponentWillMount': //子组件在ComponentWillMount中调用父组件的setState
-        case 'beforeComponentDidMount': //componentDidMount 触发setState会放到下一周期beforeComponentRerender
+            //ComponentWillReceiveProps 中setState  3
+            //子组件在ComponentWillMount中调用父组件的setState  3
+        case 3:
+        case 2: //componentDidMount 触发setState会放到下一周期  2
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
                 this.mayInst.dirty = true;
+                this.mayInst.needNextRender = true; //子组件componentWillReceiveProps 调用父组件的setState 触发setState会放到下一周期
                 mayQueue.dirtyComponentsQueue.push(this);
             }
             return;
@@ -73,12 +72,10 @@ Component.prototype.forceUpdate = function (callback) {
     }
     var lifeState = this.mayInst.lifeState;
     switch (lifeState) {
-        case 'beforeComponentWillUnmount': //componentWillUnmount 
-        case 'beforeComponentWillMount': //componentWillMount 会合并state
-        case 'beforeComponentRerender': //componentWillReceiveProps 
-        case 'afterComponentWillMount': //ComponentWillMount
-        case 'beforeComponentDidMount': //componentDidMount 
-        case 'beforeComponentWillReceiveProps': //ComponentWillReceiveProps 
+        case 1: //ComponentWillMount
+        case 2: //componentDidMount 
+        case 3: //ComponentWillReceiveProps 
+        case 4: //ComponentWillReceiveProps 
             return;
         default:
             mayQueue.clearQueue();

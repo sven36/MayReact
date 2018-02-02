@@ -33,9 +33,12 @@ function flushUpdates() {
             //如果C是脏组件diff 如果其在diff过程中子组件也需要diff diff之后
             //子组件_dirty会为false 没必要再diff一次；
             reRender(c);
+
+
         }
         if (c) {
-            c.mayInst.lifeState = 'reRenderComplete';
+            //diff之后组件的状态返回0
+            c.mayInst.lifeState = 0;
         }
     }
     //ComponentDidUpdate
@@ -49,6 +52,8 @@ function clearLifeCycleQueue() {
         // mayQueue.lifeCycleQueue = mayQueue.lifeCycleQueue.sort(sortComponent);
         while (lifeCallback = mayQueue.lifeCycleQueue.shift()) {
             lifeCallback();
+            //componentDidMount 之后其lifeState为0
+            lifeCallback.instance && (lifeCallback.instance.mayInst.lifeState = 0);
         }
     }
 }
