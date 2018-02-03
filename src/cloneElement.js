@@ -5,22 +5,22 @@ import {
 export function cloneElement(element, additionalProps) {
     var type = element.type;
     var props = element.props;
-    if (additionalProps) {
-        props = Object.assign(props, additionalProps);
-    }
+    var mergeProps = {};
+    Object.assign(mergeProps, props, additionalProps);
+
     var config = {};
-    for (const key in props) {
+    if (element.key) {
+        config.key = element.key;
+    }
+    if (element.ref) {
+        config.ref = element.ref;
+    }
+    for (const key in mergeProps) {
         if (key !== 'children') {
-            config[key] = element.props[key];
+            config[key] = mergeProps[key];
         }
     }
-    // if (props.key) {
-    //     config.key = props.key;
-    // }
-    // if (props.ref) {
-    //     config.ref = props.ref;
-    // }
-    var children = props.children;
+    var children = mergeProps.children;
     var ret = createElement(type, config, children);
     return ret;
 }

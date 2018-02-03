@@ -24,7 +24,13 @@ var May = {
     PureComponent: PureComponent,
     cloneElement: cloneElement,
     Children: Children,
-    render: render
+    render: render,
+    createFactory: function createFactory(type) {
+        console.error("createFactory is deprecated");
+        var factory = createElement.bind(null, type);
+        factory.type = type;
+        return factory;
+    }
 }
 export {
     createElement,

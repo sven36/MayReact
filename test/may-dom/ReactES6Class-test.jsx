@@ -1,13 +1,29 @@
-/*import React from "dist/React";
-import getTestDocument from "./getTestDocument";
-import ReactTestUtils from "lib/ReactTestUtils";
+import PropTypes from '../../lib/ReactPropTypes';
+import ReactTestUtils from "../../lib/ReactTestUtils";
+import React from '../../src/May';
+import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom';
+import {shallowCompare} from '../../src/PureComponent';
 
-import PropTypes from "lib/ReactPropTypes";
+var ReactDOM = {
+    render: render,
+    unmountComponentAtNode: unmountComponentAtNode,
+    findDOMNode: findDOMNode
+}
+React.render = render;
+
+
+// import React from "../../dist/ReactANU";
+// var ReactDOM = React;
+// var ReactTestUtils = {
+//   renderIntoDocument: function (element) {
+//     var div = document.createElement("div");
+//     return React.render(element, div);
+//   }
+// };
 //https://github.com/facebook/react/blob/master/src/isomorphic/children/__tests__/ReactChildren-test.js
-var ReactDOM = window.ReactDOM || React;
 
 describe("ReactES6Class", function() {
-    this.timeout(200000);
+    // this.timeout(200000);
     var container;
     var freeze = function(expectation) {
         Object.freeze(expectation);
@@ -85,7 +101,7 @@ describe("ReactES6Class", function() {
         instance.changeState();
         test(<Foo />, "SPAN", "bar");
     });
-    it("renders based on context in the constructor", () => {
+    /*it("renders based on context in the constructor", () => {
         class Foo extends React.Component {
             constructor(props, context) {
                 super(props, context);
@@ -353,7 +369,7 @@ describe("ReactES6Class", function() {
     var instance = test(<Inner name="foo" />, 'DIV', 'foo');
     var node = ReactDOM.findDOMNode(instance);
     expect(node).toBe(container.firstChild);
-  });
+  });*/
 
 
-});*/
+});

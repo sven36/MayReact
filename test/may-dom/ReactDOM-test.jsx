@@ -1,15 +1,32 @@
-/*import React from "dist/React";
-import getTestDocument from "./getTestDocument";
-import ReactTestUtils from "lib/ReactTestUtils";
-import ReactDOMServer from "dist/ReactDOMServer";
+import PropTypes from '../../lib/ReactPropTypes';
+import ReactTestUtils from "../../lib/ReactTestUtils";
+import React from '../../src/May';
+import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom';
+import {shallowCompare} from '../../src/PureComponent';
+
+var ReactDOM = {
+    render: render,
+    unmountComponentAtNode: unmountComponentAtNode,
+    findDOMNode: findDOMNode
+}
+React.render = render;
+
+
+// import React from "../../dist/ReactANU";
+// var ReactDOM = React;
+// var ReactTestUtils = {
+//   renderIntoDocument: function (element) {
+//     var div = document.createElement("div");
+//     return React.render(element, div);
+//   }
+// };
 // https://github.com/facebook/react/blob/master/src/renderers/__tests__/EventPluginHub-test.js
-var ReactDOM = window.ReactDOM || React;
 
-describe("ReactDOM", function() {
-    this.timeout(200000);
+describe("ReactDOM", function () {
+  // this.timeout(200000);
 
-    it('allows a DOM element to be used with a string', () => {
-    var element = React.createElement('div', {className: 'foo'});
+  it('allows a DOM element to be used with a string', () => {
+    var element = React.createElement('div', { className: 'foo' });
     var instance = ReactTestUtils.renderIntoDocument(element);
     expect(ReactDOM.findDOMNode(instance).tagName).toBe('DIV');
   });
@@ -24,7 +41,7 @@ describe("ReactDOM", function() {
 
   it('should overwrite props.children with children argument', () => {
     var conflictDiv = ReactTestUtils.renderIntoDocument(
-      React.createElement('div', {children: 'fakechild'}, 'child'),
+      React.createElement('div', { children: 'fakechild' }, 'child'),
     );
     var conflictNode = ReactDOM.findDOMNode(conflictDiv);
     expect(conflictNode.innerHTML).toBe('child');
@@ -34,7 +51,7 @@ describe("ReactDOM", function() {
    * We need to make sure that updates occur to the actual node that's in the
    * DOM, instead of a stale cache.
    */
-  /*it('should purge the DOM cache when removing nodes', () => {
+  it('should purge the DOM cache when removing nodes', () => {
     var myDiv = ReactTestUtils.renderIntoDocument(
       <div>
         <div key="theDog" className="dog" />,
@@ -72,4 +89,4 @@ describe("ReactDOM", function() {
     var dog = root.childNodes[0];
     expect(dog.className).toBe('bigdog');
   });
-})*/
+})

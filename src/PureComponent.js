@@ -19,6 +19,16 @@ fn.shouldComponentUpdate = function (nextProps, nextState, context) {
     }
     return ret;
 }
+export function shallowCompare(instance, nextProps, nextState) {
+    var ret = true;;
+    var a = shallowEqual(instance.props, nextProps);
+    var b = shallowEqual(instance.state, nextState);
+    if (a === true && b === true) {
+        ret = false;
+    }
+    return ret;
+}
+
 
 export function shallowEqual(now, next) {
     if (Object.is(now, next)) {
