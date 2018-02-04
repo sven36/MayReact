@@ -4,6 +4,7 @@
 　　https://github.com/sven36/MayReact
 
 　　MayReact是我参照React，preact，anujs等库写的一个miniReact框架；其初衷和anu很相似就是写一个更小更快，不过可以拥有react的api完美兼容其生态的一个框架；
+   anu我也很推荐地址：https://github.com/RubyLouvre/anu
 
 　　今天我很高兴，因为MayReact已经可以跑通全部的React官方测试用例，也就是说MayReact已经可以使用在生产环境了；
 
