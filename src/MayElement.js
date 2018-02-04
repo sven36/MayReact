@@ -45,7 +45,14 @@ export function createElement(type, config, children) {
     if (len > 1) {
         var array = new Array();
         for (var i = 0; i < len; i++) {
-            array.push(arguments[i + 2]);
+            var c = arguments[i + 2];
+            if (!Array.isArray(c)) {
+                array.push(c);
+            } else {
+                c.forEach(function (item) {
+                    array.push(item);
+                });
+            }
         }
         props.children = array;
     } else if (len === 1) { // && children

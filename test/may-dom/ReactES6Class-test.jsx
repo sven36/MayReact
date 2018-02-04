@@ -101,7 +101,7 @@ describe("ReactES6Class", function() {
         instance.changeState();
         test(<Foo />, "SPAN", "bar");
     });
-    /*it("renders based on context in the constructor", () => {
+    it("renders based on context in the constructor", () => {
         class Foo extends React.Component {
             constructor(props, context) {
                 super(props, context);
@@ -295,7 +295,7 @@ describe("ReactES6Class", function() {
         expect(getDefaultPropsWasCalled).toBe(false);
     });
 
-    it('does not warn about getInitialState() on class components if state is also defined.', () => {
+   it('does not warn about getInitialState() on class components if state is also defined.', () => {
     spyOn(console, 'error');
     class Foo extends React.Component {
       state = this.getInitialState();
@@ -323,7 +323,7 @@ describe("ReactES6Class", function() {
     test(<NamedComponent />, 'SPAN', 'foo');
 
   });
-  it('should warn when misspelling componentWillReceiveProps', () => {
+   it('should warn when misspelling componentWillReceiveProps', () => {
 
     class NamedComponent extends React.Component {
       componentWillRecieveProps() {
@@ -369,7 +369,7 @@ describe("ReactES6Class", function() {
     var instance = test(<Inner name="foo" />, 'DIV', 'foo');
     var node = ReactDOM.findDOMNode(instance);
     expect(node).toBe(container.firstChild);
-  });*/
+  });
 
 
 });

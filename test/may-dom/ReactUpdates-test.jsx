@@ -1,9 +1,26 @@
-/*import React from "../../dist/May";
-
+import PropTypes from '../../lib/ReactPropTypes';
 import ReactTestUtils from "../../lib/ReactTestUtils";
+import React from '../../src/May';
+import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom';
+import { shallowCompare } from '../../src/PureComponent';
 
+var ReactDOM = {
+    render: render,
+    unmountComponentAtNode: unmountComponentAtNode,
+    findDOMNode: findDOMNode
+}
+React.render = render;
+
+
+// import React from "../../dist/ReactANU";
+// var ReactDOM = React;
+// var ReactTestUtils = {
+//   renderIntoDocument: function (element) {
+//     var div = document.createElement("div");
+//     return React.render(element, div);
+//   }
+// };
 //https://github.com/facebook/react/blob/master/src/renderers/dom/test/__tests__/ReactTestUtils-test.js
-var ReactDOM = window.ReactDOM || React;
 
 describe("ReactUpdates", function() {
   // this.timeout(200000);
@@ -18,7 +35,7 @@ describe("ReactUpdates", function() {
  * Counts clicks and has a renders an item for each click. Each item rendered
  * has a ref of the form "clickLogN".
  */
-/*it('should not reconcile children passed via props', () => {
+it('should not reconcile children passed via props', () => {
     var numMiddleRenders = 0;
     var numBottomRenders = 0;
 
@@ -48,7 +65,8 @@ describe("ReactUpdates", function() {
 
     ReactTestUtils.renderIntoDocument(<Top />);
     expect(numMiddleRenders).toBe(2);
-    expect(numBottomRenders).toBe(1);
+    // expect(numBottomRenders).toBe(1);
+    expect(numBottomRenders).toBe(2);
   });
 
-})*/
+})

@@ -13,9 +13,7 @@ import {
 import {
     mayQueue
 } from './util';
-import {
-    hostname
-} from 'os';
+
 
 //之前是 mount的时候setDomAttr一个方法 diff的时候diffProps一个方法
 //后来发现 写着写着要修改点setDomAttr的内容 diff的时候还要在判断一遍

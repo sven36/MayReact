@@ -1,20 +1,36 @@
-/*import React from "dist/React";
-import getTestDocument from "./getTestDocument";
-import ReactTestUtils from "lib/ReactTestUtils";
+import PropTypes from '../../lib/ReactPropTypes';
+import ReactTestUtils from "../../lib/ReactTestUtils";
+import React from '../../src/May';
+import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom';
+import { shallowCompare } from '../../src/PureComponent';
 
-import ReactDOMServer from "dist/ReactDOMServer";
+var ReactDOM = {
+    render: render,
+    unmountComponentAtNode: unmountComponentAtNode,
+    findDOMNode: findDOMNode
+}
+React.render = render;
+
+
+// import React from "../../dist/ReactANU";
+// var ReactDOM = React;
+// var ReactTestUtils = {
+//   renderIntoDocument: function (element) {
+//     var div = document.createElement("div");
+//     return React.render(element, div);
+//   }
+// };
 //https://github.com/facebook/react/blob/master/src/isomorphic/children/__tests__/ReactChildren-test.js
-var ReactDOM = window.ReactDOM || React;
 
-describe("ReactIdentity", function() {
-    this.timeout(200000);
+describe("ReactIdentity", function () {
+    // this.timeout(200000);
 
     it("should allow key property to express identity", () => {
         var node;
         var Component = props => (
             <div ref={c => (node = c)}>
-                <div key={props.swap ? "banana" : "apple"} />
-                <div key={props.swap ? "apple" : "banana"} />
+                <div key={props.swap ? "banana" : "apple"} id={props.swap ? "banana" : "apple"} />
+                <div key={props.swap ? "apple" : "banana"} id={props.swap ? "apple" : "banana"} />
             </div>
         );
 
@@ -23,8 +39,8 @@ describe("ReactIdentity", function() {
         var origChildren = Array.from(node.childNodes);
         ReactDOM.render(<Component swap={true} />, container);
         var newChildren = Array.from(node.childNodes);
-        expect(origChildren[0]).toBe(newChildren[1]);
-        expect(origChildren[1]).toBe(newChildren[0]);
+        expect(origChildren[0] === newChildren[1]).toBe(true);
+        expect(origChildren[1] === newChildren[0]).toBe(true);
     });
 
     it("should use composite identity", () => {
@@ -228,4 +244,4 @@ describe("ReactIdentity", function() {
       ReactTestUtils.renderIntoDocument(component);
     }).not.toThrow();
   });
-});*/
+});

@@ -244,8 +244,8 @@ function buildComponentFromVnode(vnode) {
 	var Ctor = vnode.type;
 	//Component  PureComponent
 	if (Ctor.prototype && Ctor.prototype.render) {
-		//创建一个原型指向Component的对象
-		inst = new Ctor(props, key, ref, context);
+		//props, context需要放在前俩
+		inst = new Ctor(props, context, key, ref);
 		//constructor里面props不可变
 		inst.props = props;
 		if (!inst.mayInst) {
@@ -293,6 +293,8 @@ function buildComponentFromVnode(vnode) {
 			console.warn('不推荐使用这种module-pattern component建议换成正常的Component形式,目前只支持render暂不支持其它生命周期方法')
 			renderedVnode = renderedVnode.render.call(vnode, props, context);
 		}
+		//Stateless Component也需要向下传递context
+		renderedVnode && (renderedVnode.context = context);
 	}
 	//添加一个指针用于删除DOM时释放其component 对象,事件,ref等占用的内存
 	vnode.mayInfo.rendered = renderedVnode;
@@ -368,19 +370,19 @@ export function reRender(instance) {
 		}
 		var isSVG = updated.mtype === 3;
 		var dom = mountStrategy[updated.mtype](updated, isSVG);
+		//component上的hostNode保持最新
+		var lastVnode = hostNode.parentNode._lastVnode;
+		lastVnode && (lastVnode.mayInfo.hostNode = dom);
 		hostNode.parentNode.replaceChild(dom, hostNode);
 		updated.mayInfo.hostNode = dom;
 		hostNode = dom;
-		if (instance.parentInstance) {
-
-		}
 	}
 	updated.mayInfo.vChildren = transformChildren(updated, hostNode);
 	instance.mayInst.forceUpdate = null;
 	instance.mayInst.hostNode = hostNode;
 	if (instance.componentDidUpdate) {
 		if (instance.mayInst.needNextRender) {
-			instance.componentDidUpdate(instance.props, instance.state, instance.context);
+			instance.componentDidUpdate(props, prevState, instance.context);
 		} else {
 			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.props, instance.state, instance.context));
 		}
@@ -446,6 +448,7 @@ function updateDOM(prevVnode, newVnode) {
 		}
 
 	}
+
 	return hostNode;
 }
 
@@ -465,12 +468,13 @@ function updateComposite(prevVnode, newVnode) {
 	//empty代表prevVnode为null
 	var isEmpty = !prevVnode.mayInfo.rendered;
 	var hostNode = prevVnode.mayInfo.hostNode;
-	var newDom, newRendered, prevState;
+	var newDom, newRendered, prevState, prevProps;
 	var skip = false;
 	if (instance) {
 		//需要兼容componentWillReceiveProps直接this.state={///}的情况
 		//先保存下之前的state
 		prevState = instance.state;
+		prevProps = prevVnode.props;
 		//lifeState为3组件开始diff
 		//WillReceive WillUpdate render DidUpdate等周期setState放到下一周期;
 		instance.mayInst.lifeState = 3;
@@ -545,7 +549,7 @@ function updateComposite(prevVnode, newVnode) {
 				//componentWillUnmount需要先执行
 				if (prevRendered.mayInfo.instance && prevRendered.mayInfo.instance.componentWillUnmount) {
 					prevRendered.mayInfo.instance.componentWillUnmount();
-					prevRendered.mayInfo.instance.componentWillUnmount = noop;
+					prevRendered.mayInfo.instance.componentWillUnmount = null;
 				}
 				var isSVG = newRendered.mtype === 3;
 				newDom = mountStrategy[newRendered.mtype](newRendered, isSVG);
@@ -557,7 +561,7 @@ function updateComposite(prevVnode, newVnode) {
 				var isSVG = newRendered.mtype === 3;
 				newDom = mountStrategy[newRendered.mtype](newRendered, isSVG);
 				newRendered.mayInfo.hostNode = newDom;
-				if(hostNode.parentNode){
+				if (hostNode.parentNode) {
 					hostNode.parentNode.replaceChild(newDom, hostNode);
 				}
 			}
@@ -569,7 +573,7 @@ function updateComposite(prevVnode, newVnode) {
 			instance.mayInst.needNextRender = false;
 		}
 		if (instance.componentDidUpdate) {
-			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.state, instance.props, instance.context));
+			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, prevProps, prevState, instance.context));
 		} else {
 			//没有回调初始化为0
 			instance.mayInst.lifeState = 0;
@@ -582,13 +586,24 @@ function updateComposite(prevVnode, newVnode) {
 		}
 		instance.mayInst.hostNode = hostNode;
 	} else { //stateless component
-		if (newVnode) {
+		var prevRendered = prevVnode.mayInfo.rendered;
+		var newRendered = newVnode.type.call(newVnode, newVnode.props, newVnode.context);
+		newRendered.context = newVnode.context;
+		if (prevRendered && isSameType(prevRendered, newRendered)) {
+			hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
+			newRendered.mayInfo.hostNode = hostNode;
+			if (newRendered.ref && typeof newRendered.ref === 'function') {
+				var t = newRendered.mtype === 1 ? hostNode : newRendered;
+				lifeCycleQueue.push(newRendered.ref.bind(t, t));
+			}
+		} else if (newVnode) {
 			var isSVG = newVnode.mtype === 3;
 			newDom = mountStrategy[newVnode.mtype](newVnode, isSVG);
 			newVnode.mayInfo.hostNode = newDom;
 			hostNode.parentNode.replaceChild(newDom, hostNode);
 			hostNode = newDom;
 		}
+
 	}
 	return hostNode;
 }

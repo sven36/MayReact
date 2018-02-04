@@ -1,21 +1,35 @@
-/*import React from "dist/React";
+import PropTypes from '../../lib/ReactPropTypes';
+import ReactTestUtils from "../../lib/ReactTestUtils";
+import React from '../../src/May';
+import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom';
+import { shallowCompare } from '../../src/PureComponent';
 
-import getTestDocument from "./getTestDocument";
-import ReactTestUtils from "lib/ReactTestUtils";
-import ReactShallowRenderer from "lib/ReactShallowRenderer";
+var ReactDOM = {
+    render: render,
+    unmountComponentAtNode: unmountComponentAtNode,
+    findDOMNode: findDOMNode
+}
+React.render = render;
 
-import ReactDOMServer from "dist/ReactDOMServer";
+
+// import React from "../../dist/ReactANU";
+// var ReactDOM = React;
+// var ReactTestUtils = {
+//   renderIntoDocument: function (element) {
+//     var div = document.createElement("div");
+//     return React.render(element, div);
+//   }
+// };
 //https://github.com/facebook/react/blob/master/src/renderers/dom/test/__tests__/ReactTestUtils-test.js
-var ReactDOM = window.ReactDOM || React;
 
 describe("ReactTestUtils", function() {
-  this.timeout(200000);
-  before(async () => {
-    await beforeHook();
-  });
-  after(async () => {
-    await afterHook(false);
-  });
+  // this.timeout(200000);
+  // before(async () => {
+  //   await beforeHook();
+  // });
+  // after(async () => {
+  //   await afterHook(false);
+  // });
 
   var body = document.body,
     div;
@@ -110,7 +124,7 @@ describe("ReactTestUtils", function() {
     expect(scryResults5.length).toBe(0);
   });
 
-  it("traverses children in the correct order", () => {
+  /*it("traverses children in the correct order", () => {
     class Wrapper extends React.Component {
       render() {
         return <div>{this.props.children}</div>;
@@ -178,15 +192,15 @@ describe("ReactTestUtils", function() {
         );
       }
     }
-    const markup = ReactDOMServer.renderToString(<Root />);
-    const testDocument = getTestDocument(markup);
-    const component = ReactDOM.render(<Root />, testDocument.body);
-    expect(component.refs.html.tagName).toBe("HTML");
-    expect(component.refs.head.tagName).toBe("HEAD");
-    expect(component.refs.body.tagName).toBe("BODY");
-    expect(ReactTestUtils.isDOMComponent(component.refs.html)).toBe(true);
-    expect(ReactTestUtils.isDOMComponent(component.refs.head)).toBe(true);
-    expect(ReactTestUtils.isDOMComponent(component.refs.body)).toBe(true);
+    // const markup = ReactDOMServer.renderToString(<Root />);
+    // const testDocument = getTestDocument(markup);
+    // const component = ReactDOM.render(<Root />, testDocument.body);
+    // expect(component.refs.html.tagName).toBe("HTML");
+    // expect(component.refs.head.tagName).toBe("HEAD");
+    // expect(component.refs.body.tagName).toBe("BODY");
+    // expect(ReactTestUtils.isDOMComponent(component.refs.html)).toBe(true);
+    // expect(ReactTestUtils.isDOMComponent(component.refs.head)).toBe(true);
+    // expect(ReactTestUtils.isDOMComponent(component.refs.body)).toBe(true);
   });
   it("can scry with stateless components involved", () => {
     const Stateless = () => (
@@ -384,5 +398,5 @@ describe("ReactTestUtils", function() {
 
     ReactTestUtils.renderIntoDocument(<Component />);
     expect(mockArgs.length).toEqual(0);
-  });
-});*/
+  });*/
+});
