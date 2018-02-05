@@ -1,6 +1,6 @@
 import {
     reRender
-} from './MayDom';
+} from './may-dom/MayDom';
 import {
     mayQueue,
     mergeState

@@ -1,7 +1,7 @@
 import PropTypes from '../../lib/ReactPropTypes';
 import ReactTestUtils from "../../lib/ReactTestUtils";
 import React from '../../src/May';
-import { render, unmountComponentAtNode, findDOMNode } from '../../src/MayDom';
+import { render, unmountComponentAtNode, findDOMNode } from '../../src/may-dom/MayDom';
 import { shallowCompare } from '../../src/PureComponent';
 
 var ReactDOM = {

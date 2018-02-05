@@ -1,6 +1,6 @@
 import {
     reRender
-} from './MayDom'
+} from './may-dom/MayDom'
 
 //mayQueue 保存render过程中的各种事件队列 
 export var mayQueue = {
@@ -11,6 +11,8 @@ export var mayQueue = {
     clearQueue: clearQueue,
     flushUpdates: flushUpdates,
 }
+//存放生命周期中的 DidMount DidUpdate以及ref回调
+export var lifeCycleQueue = mayQueue.lifeCycleQueue;
 /**
  * 清空回调队列
  * @param {*} mayQueue 
@@ -115,7 +117,7 @@ export function extend(target, src) {
  * @param {*} superClass 
  */
 export function inherits(target, superClass) {
-    function b() {};
+    function b() { };
     b.prototype = superClass.prototype;
     var fn = target.prototype = new b();
     fn.constructor = target;

@@ -3,7 +3,7 @@
 import ReactTestUtils from "../../lib/ReactTestUtils";
 
 import React from '../../src/May';
-import { render, unmountComponentAtNode } from '../../src/MayDom'
+import { render, unmountComponentAtNode } from '../../src/may-dom/MayDom';
 var ReactDOM = {
 	render: render,
 	unmountComponentAtNode: unmountComponentAtNode

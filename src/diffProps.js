@@ -5,7 +5,7 @@ import {
 } from './event';
 import {
     diffChildren
-} from './MayDom';
+} from './may-dom/MayDom';
 
 import {
     Refs

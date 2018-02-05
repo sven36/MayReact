@@ -4,7 +4,7 @@
   "description": "",
   "main": "may.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "karma start",
     "build": "rollup -c scripts/rollup.js"
   },
   "author": "c",

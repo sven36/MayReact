@@ -1,6 +1,4 @@
-import {
-    getIteractor
-} from './MayDom';
+import { getIteractor } from './may-dom/MayDom';
 export const Children = {
     only: function (child) {
         if (child && !Array.isArray(child)) {

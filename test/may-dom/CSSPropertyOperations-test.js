@@ -12,7 +12,7 @@
 import React from '../../src/May';
 import {
 	render
-} from '../../src/MayDom'
+} from '../../src/may-dom/MayDom'
 var ReactDOM = {
 	render: render
 }

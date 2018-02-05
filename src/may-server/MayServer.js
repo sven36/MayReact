@@ -1,6 +1,6 @@
 import {
     render
-} from '../MayDom';
+} from '../may-dom/MayDom';
 
 var MayServer = {
     renderToString: renderToString

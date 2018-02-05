@@ -1,22 +1,10 @@
-import {
-    createElement
-} from './MayElement';
-import {
-    Component
-} from './Component';
-import {
-    PureComponent
-} from './PureComponent';
-import {
-    cloneElement
-} from './cloneElement';
-import {
-    Children
-} from './Children';
+import { createElement } from './MayElement';
+import { Component } from './Component';
+import { PureComponent } from './PureComponent';
+import { cloneElement } from './cloneElement';
+import { Children } from './Children';
 import { PropTypes } from './PropTypes';
-import {
-    render, findDOMNode, unmountComponentAtNode
-} from './MayDom'
+import { render, findDOMNode, unmountComponentAtNode } from './may-dom/MayDom';
 
 var May = {
     createElement: createElement,
@@ -28,6 +16,9 @@ var May = {
     PropTypes: PropTypes,
     findDOMNode: findDOMNode,
     unmountComponentAtNode: unmountComponentAtNode,
+    isValidElement: function (vnode) {
+        return vnode && vnode.mtype;
+    },
     createFactory: function createFactory(type) {
         console.error("createFactory is deprecated");
         var factory = createElement.bind(null, type);
