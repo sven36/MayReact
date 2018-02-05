@@ -16,8 +16,8 @@
 
     首次render:
                 最重要的就是深度优先递归遍历了,难的地方在于我怎么把这个过程设计的高内聚低耦合,这样我能很方便的加一些或去掉一些处理流程
-                比如我在render过程中要设置css属性,要添加event监听事件,有ref要添加,有context要获取,针对vnode,component,
-                statelessComponent,text,我要对应如何render;我这些过程将来我想引入插件该怎么设置钩子函数等;
+                比如我在render过程中要设置css属性,要添加event监听事件,有ref要添加,有context要获取,
+                针对vnode,component,statelessComponent,text,我要对应如何render;我这些过程将来我想引入插件该怎么设置钩子函数等;
                 接下来要考虑生命周期了在首次render过程中有constructor,componentWillMount,render,componentDidMount;
 
                 constructor:我如果在constructor调用setState应该怎么办(不推荐写法,但是我们要做兼容处理)我在constructor里面改变props了
@@ -34,7 +34,8 @@
                 
                 还有css属性注意property与attribute的区别,backgroundColor等要转换成background-color(同理各种Webkit,Moz等);
                 event要注意一些特殊事件,focus,blur,wheel,change等;受控组件与非受控组件事件的区别等;
-                render要注意类型是vnode,component,statelessComponent,text等对应不同的render方式,还要考虑我是多个component,多个                               statelessComponent嵌套怎么区分怎么render等;
+                render要注意类型是vnode,component,statelessComponent,text等对应不同的render方式,还要考虑我是多个component,
+                多个statelessComponent嵌套怎么区分怎么render等;
     
     diff过程:
                 和render的深度优先不同,render我是每层create一个容器dom,然后再render其children不断递归向下,然后再层层把children
