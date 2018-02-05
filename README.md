@@ -1,5 +1,11 @@
 # MayReact
-写一下过程中的思索：React大概可以分为这几个模块：
+先介绍下MayReact
+    MayReact是我参照React，preact，anujs等库写的一个miniReact框架；其初衷和anu很相似就是写一个更小更快，
+    不过可以拥有react的api完美兼容其生态的一个框架；(可以跑通绝大部分的官方测试用例保证其兼容性和健壮性)
+    只有2000多行,已在自己的项目测试可以完美替换,现在在进行性能优化,和部分代码重构;目前性能是React的一倍左右;
+    优化后期望追评anu在两倍以上;
+
+写一下过程中的思索以期能帮助也想写一写的人：React大概可以分为这几个模块：
 
     vnode模块：
                 就是以js对象的形式表示dom,包括createElement,cloneElement,Component,PureComponent,statelessComponent
@@ -62,10 +68,8 @@
 
 
 --------------------------------------------------------------------------------------------------------------------------------------
-##介绍下MayReact；
+##接着说下MayReact；
 
-    MayReact是我参照React，preact，anujs等库写的一个miniReact框架；其初衷和anu很相似就是写一个更小更快，
-    不过可以拥有react的api完美兼容其生态的一个框架；
     anu我也很推荐地址：https://github.com/RubyLouvre/anu
 
     MayReact其实May取maybe的意思，寓意无限可能吧；
