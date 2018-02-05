@@ -1,25 +1,17 @@
-import {
-  createElement
-} from '../src/May';
-import {
-  Component
-} from '../src/Component';
-import { render } from '../src/MayDom'
-var React = {
-  createElement: createElement
-}
+
+import React from '../dist/May'
 
 describe('may.js', () => {
 
   it('createElement', () => {
-    var el = createElement("p", null, 'sst');
+    var el = React.createElement("p", null, 'sst');
     expect(el.type).toBe("p");
     expect(el.props.children.length).toBe(3);
   });
 
   it('component', () => {
 
-    class C1 extends Component {
+    class C1 extends React.Component {
 
       bindClick(params) {
         console.log('clicked');
@@ -50,7 +42,7 @@ describe('may.js', () => {
   it('mayRender', () => {
     spyOn(console, 'error');
     var container = document.createElement('div');
-	  class Child extends Component {
+	  class Child extends React.Component {
 		//   constructor(props){
 		// 	  super(props);
 		// 	  this.state={val2:'I wonder'};
@@ -65,7 +57,7 @@ describe('may.js', () => {
 				  </div>);
 		  }
 	  }
-    class Parent extends Component {
+    class Parent extends React.Component {
 		constructor(){
 			super();
 			this.state={val:'I wonder'};
@@ -92,7 +84,7 @@ describe('may.js', () => {
 			);
 		}
     }
-    render(<Parent />, container);
+    React.render(<Parent />, container);
     document.body.appendChild(container);
     expect(console.error.calls.count()).toBe(0);
   });

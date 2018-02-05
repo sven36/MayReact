@@ -1,16 +1,5 @@
-import { cloneElement } from "../../src/cloneElement";
-// import { createClass } from "src/createClass";
-import {
-    createElement
-} from '../../src/May';
-import {
-    Component
-} from '../../src/Component';
-var React = {
-    createElement: createElement,
-    Component: Component,
-    cloneElement:cloneElement
-}
+import React from "../../dist/May";
+var cloneElement=React.cloneElement;
 describe("cloneElement", function () {
     it("test", () => {
         var a = {

@@ -268,7 +268,7 @@ function buildComponentFromVnode(vnode) {
 			inst.state = mergeState(inst);
 		}
 		//为2代表开始render
-		//children 初次render的生命周期willMount DidMount
+		//children 初次render的生命周期render DidMount
 		//调用父组件的setState 都放在父组件的下一周期;
 		inst.mayInst.lifeState = 2;
 		renderedVnode = inst.render(props, context);

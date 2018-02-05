@@ -1,10 +1,5 @@
 import React from '../../src/May';
-import { render, unmountComponentAtNode } from '../../src/MayDom'
-var ReactDOM = {
-    render: render,
-    unmountComponentAtNode: unmountComponentAtNode
-}
-React.render = render;
+
 
 describe("createElement", function () {
     it("type", () => {
