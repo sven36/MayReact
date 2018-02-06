@@ -48,9 +48,10 @@ function mountDOM(vnode, isSVG) {
     var vtype = vnode.type;
     vnode.mayInfo.isSVG = isSVG;
     var hostNode = !isSVG ? document.createElement(vtype) : document.createElementNS(NAMESPACE.svg, vnode.type);
-    if (!Refs.currentOwner) {
+    if (Refs.isRoot) {
         Refs.currentOwner = hostNode;
         hostNode.refs = {};
+        Refs.isRoot = false;
     }
     vnode.mayInfo.hostNode = hostNode;
     diffProps(null, vnode);
@@ -111,14 +112,6 @@ function mountDOM(vnode, isSVG) {
         if (lifeCycleQueue.indexOf(vnode) === -1) {
             lifeCycleQueue.push(vnode);
         }
-        // var ref = vnode.ref;
-        // var owner = Refs.currentOwner;
-        // var refInst = vnode.mayInfo.instance || vnode.mayInfo.hostNode || null;
-        // if (typeof ref === 'function') {
-        //     lifeCycleQueue.push(ref.bind(owner, refInst));
-        // } else if (typeof ref === 'string') { //ref 为string
-        //     owner.refs[ref] = refInst;
-        // }
     }
     return hostNode;
 }
@@ -128,17 +121,17 @@ function mountDOM(vnode, isSVG) {
 function mountComposite(vnode, isSVG) {
     var hostNode = null;
     var rendered = buildComponentFromVnode(vnode);
-    var inst = vnode.mayInfo.instance || null;
-    if (inst && inst.mayInst.mountOrder === 0) {
+    var inst = vnode.mayInfo.instance;
+    if (!inst.mayInst.stateless && Refs.isRoot) {
         Refs.currentOwner = inst;
         inst.refs = {};
+        Refs.isRoot = false;
     }
     if (rendered) {
         if (!isSVG) {
             //svg的子节点namespace也是svg
             isSVG = rendered.mtype === 3;
         }
-
         //用于子组件改变同步父组件的hostNode
         // vnode.mayInfo.instance && (rendered.mayInfo.parentInstance = vnode.mayInfo.instance)
         //递归遍历 深度优先
@@ -147,7 +140,7 @@ function mountComposite(vnode, isSVG) {
         rendered.mayInfo.vChildren = transformChildren(rendered, hostNode);
         rendered.mayInfo.hostNode = hostNode;
         vnode.mayInfo.hostNode = hostNode;
-        inst && (inst.mayInst.hostNode = hostNode);
+        inst.mayInst.hostNode = hostNode;
     } else { //render 返回null
         hostNode = document.createComment('empty');
         vnode.mayInfo.hostNode = hostNode;
@@ -157,13 +150,13 @@ function mountComposite(vnode, isSVG) {
             inst.mayInst.hostNode = hostNode;
         }
     }
-    if (vnode.ref || (inst && inst.componentDidMount)) {
+    if (vnode.ref || inst.componentDidMount) {
         if (lifeCycleQueue.indexOf(vnode) === -1) {
             lifeCycleQueue.push(vnode);
         }
     } else {
         //如果没有回调则其render生命周期结束lifeState为0
-        inst && (inst.mayInst.lifeState = 0);
+        inst.mayInst.lifeState = 0;
     }
 
     return hostNode;

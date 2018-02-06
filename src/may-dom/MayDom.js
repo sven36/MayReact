@@ -50,6 +50,7 @@ var renderByMay = function (vnode, container, callback) {
 	var renderedVnode, rootDom, result;
 	var lastVnode = container._lastVnode || null;
 	if (lastVnode) { //update
+		Refs.isRoot = true;
 		rootDom = mayUpdate(lastVnode, vnode, container);
 	} else {
 		if (vnode && vnode.type) {
@@ -57,6 +58,7 @@ var renderByMay = function (vnode, container, callback) {
 			//因为如果按renderComponentChildren(renderedVnode, rootDom, _isSvg);传入container这种
 			//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
 			var isSVG = vnode.mtype === 3;
+			Refs.isRoot = true;
 			rootDom = mountStrategy[vnode.mtype](vnode, isSVG);
 			if (rootDom && container && container.appendChild) {
 				container.appendChild(rootDom);
@@ -84,6 +86,7 @@ var renderByMay = function (vnode, container, callback) {
 		//快写完了我才发现~惭愧~看来还是自己写写好，不如琢如磨，怎么对这流程了如指掌，不胸有成竹又如何找寻这
 		//最优方法
 	}
+	Refs.isRoot = false;
 	Refs.currentOwner = null;
 	container._lastVnode = vnode;
 	return result;

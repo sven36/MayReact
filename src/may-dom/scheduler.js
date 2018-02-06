@@ -60,20 +60,24 @@ function clearLifeCycleQueue() {
             var refInst;
             if (instance) {
                 refInst = instance.mayInst.stateless ? null : instance;
-                if (instance.componentDidMount) {
-                    instance.componentDidMount();
-                }
-                if (vnode.refType === 1) {
-                    vnode.ref(refInst);
-                }
-                //componentDidMount DidUpdate之后其lifeState为0
-                instance.mayInst.lifeState = 0;
             } else {
                 refInst = vnode.mayInfo.hostNode;
             }
+            //如果是string 需要在componentDidMount之前赋值
             if (vnode.refType === 2) {
                 Refs.currentOwner.refs[vnode.ref] = refInst;
             }
+            if (vnode.refType === 1) {
+                vnode.ref(refInst);
+            }
+            if (instance) {
+                if (instance.componentDidMount) {
+                    instance.componentDidMount();
+                }
+                //componentDidMount DidUpdate之后其lifeState为0
+                instance.mayInst.lifeState = 0;
+            }
+
 
         }
     }
