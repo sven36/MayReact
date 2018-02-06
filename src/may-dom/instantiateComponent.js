@@ -19,6 +19,7 @@ export function buildComponentFromVnode(vnode) {
         inst = new Ctor(props, context, key, ref);
         //constructor里面props不可变
         inst.props = props;
+        inst.refType = vnode.refType;
         inst.mayInst.mountOrder = mountOrder;
         mountOrder++;
         //_lifeState来控制生命周期中调用setState的作用

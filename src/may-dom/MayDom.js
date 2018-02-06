@@ -92,27 +92,23 @@ var renderByMay = function (vnode, container, callback) {
 	return result;
 }
 
-
-
-
-
 export function reRender(instance) {
-	var props = instance.props;
+	var prevProps = instance.props;
 	var context = instance.context;
 	var prevState = instance.state;
 	var prevRendered = instance.mayInst.rendered;
-	var isEmpty = !prevRendered;
-	var hostNode = !isEmpty && prevRendered.mayInfo.hostNode;
+	var isEmpty = instance.mayInst.isEmpty;
+	var hostNode = instance.mayInst.hostNode;
 	var skip = false;
 	//lifeState为3组件开始diff
 	//WillReceive WillUpdate render DidUpdate等周期setState放到下一周期;
 	instance.mayInst.lifeState = 3;
 	var newState = mergeState(instance);
 	//forceUpdate时 忽略shouldComponentUpdate
-	if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, newState, context) === false) {
+	if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(prevProps, newState, context) === false) {
 		skip = true;
 	} else if (instance.componentWillUpdate) {
-		instance.componentWillUpdate(props, newState, context);
+		instance.componentWillUpdate(prevProps, newState, context);
 	}
 	instance.state = newState;
 	//getChildContext有可能setState 所以需要newState再调用
@@ -121,10 +117,10 @@ export function reRender(instance) {
 	}
 	if (skip) {
 		instance.mayInst.dirty = false;
-		instance.mayInst.hostNode = hostNode;
+		// instance.mayInst.hostNode = hostNode;
 		return hostNode;
 	}
-	var updated = instance.render(props, context);
+	var updated = instance.render(prevProps, context);
 	instance.mayInst.rendered = updated;
 	updated && (updated.context = context);
 	if (!updated) {
@@ -136,7 +132,9 @@ export function reRender(instance) {
 		updated.mayInfo.hostNode = hostNode;
 		hostNode = updateStrategy[updated.mtype](prevRendered, updated);
 		updated.mayInfo.instance = instance;
-
+		updated.mayInfo.vChildren = transformChildren(updated, hostNode);
+		instance.mayInst.forceUpdate = null;
+		instance.mayInst.hostNode = hostNode;
 		//原先这种diffProps 再diffChildren的方式并未考虑到 render返回之后还是
 		//组件怎么办，连续几个组件嵌套children都需要render怎么办 这些情况都是diffProps
 		//无法处理的，当时想的是一个组件diff diff之后再diff下一个组件；但如果组件之间发生交互的
@@ -158,16 +156,20 @@ export function reRender(instance) {
 		hostNode.parentNode.replaceChild(dom, hostNode);
 		updated.mayInfo.hostNode = dom;
 		hostNode = dom;
+		instance.mayInst.hostNode = hostNode;
+		updated.mayInfo.vChildren = transformChildren(updated, hostNode);
+		instance.mayInst.forceUpdate = null;
 	}
-	updated.mayInfo.vChildren = transformChildren(updated, hostNode);
-	instance.mayInst.forceUpdate = null;
-	instance.mayInst.hostNode = hostNode;
+
 	if (instance.componentDidUpdate) {
-		if (instance.mayInst.needNextRender) {
-			instance.componentDidUpdate(props, prevState, instance.context);
-		} else {
-			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.props, instance.state, instance.context));
-		}
+		instance.mayInst.prevProps = prevProps;
+		instance.mayInst.prevState = prevState;
+		lifeCycleQueue.push(instance);
+		// if (instance.mayInst.needNextRender) {
+		// 	instance.componentDidUpdate(props, prevState, instance.context);
+		// } else {
+		// 	lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.props, instance.state, instance.context));
+		// }
 	} else {
 		instance.mayInst.lifeState = 0;
 	}
@@ -179,11 +181,7 @@ export function reRender(instance) {
 		instance.mayInst.needNextRender = false;
 	}
 
-	//防止setState currentOwner混乱
-	Refs.currentOwner = null;
 }
-
-
 
 function mayUpdate(prevVnode, newVnode, parent) {
 	var dom;
@@ -203,14 +201,6 @@ function mayUpdate(prevVnode, newVnode, parent) {
 	newVnode.mayInfo.hostNode = dom;
 	return dom;
 }
-
-
-
-
-
-
-
-
 
 export function unmountComponentAtNode(dom) {
 	var lastVnode = dom._lastVnode;

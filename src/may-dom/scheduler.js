@@ -46,39 +46,36 @@ function flushUpdates() {
             c.mayInst.lifeState = 0;
         }
     }
+
     //ComponentDidUpdate
     clearLifeCycleQueue();
+    //防止setState currentOwner混乱
+    Refs.currentOwner = null;
 }
 
 function clearLifeCycleQueue() {
     //先清空 生命周期 ref 的回调函数
     if (mayQueue.lifeCycleQueue && mayQueue.lifeCycleQueue.length > 0) {
-        var vnode;
-        // mayQueue.lifeCycleQueue = mayQueue.lifeCycleQueue.sort(sortComponent);
-        while (vnode = mayQueue.lifeCycleQueue.shift()) {
-            var instance = vnode.mayInfo.instance;
-            var refInst;
-            if (instance) {
-                refInst = instance.mayInst.stateless ? null : instance;
-            } else {
-                refInst = vnode.mayInfo.hostNode;
-            }
+        var instance;
+        //其实ref很像生命周期函数,它比较特殊的地方在于vnode.type='div'之类的vnode
+        //其string ref要指向其真实dom func ref也是回调真实的dom 其它的都是回调instance
+        //vnode.type='div'之类的ref特殊处理;剩余的就和生命周期很像了;
+        while (instance = mayQueue.lifeCycleQueue.shift()) {
+            var refInst = instance.mayInst.stateless ? null : instance;
             //如果是string 需要在componentDidMount之前赋值
-            if (vnode.refType === 2) {
-                Refs.currentOwner.refs[vnode.ref] = refInst;
+            if (instance.refType === 2) {
+                Refs.currentOwner.refs[instance.ref] = instance;
             }
-            if (vnode.refType === 1) {
-                vnode.ref(refInst);
+            if (instance.mayInst.lifeState === 2) {
+                instance.componentDidMount && instance.componentDidMount();
+            } else {
+                instance.componentDidUpdate && instance.componentDidUpdate(instance.mayInst.prevProps, instance.mayInst.prevState);
             }
-            if (instance) {
-                if (instance.componentDidMount) {
-                    instance.componentDidMount();
-                }
-                //componentDidMount DidUpdate之后其lifeState为0
-                instance.mayInst.lifeState = 0;
+            if (instance.refType === 1) {
+                instance.ref(refInst);
             }
-
-
+            //componentDidMount DidUpdate之后其lifeState为0
+            instance.mayInst.lifeState = 0;
         }
     }
 }

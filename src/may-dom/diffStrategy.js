@@ -135,7 +135,7 @@ function updateComposite(prevVnode, newVnode) {
         if (needReceive) {
             if (instance.componentWillReceiveProps) {
                 //componentWillReceiveProps中调用了setState 合并state
-                instance.mayInst.lifeState = 4;
+                instance.mayInst.lifeState = 1;
                 instance.componentWillReceiveProps(newVnode.props, temporaryContext);
                 if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
                     newState = mergeState(instance);
@@ -146,6 +146,7 @@ function updateComposite(prevVnode, newVnode) {
                     }
                 }
             }
+            instance.mayInst.lifeState = 3;
             instance.props = newVnode.props;
         } else {
             var rendered = prevVnode.mayInfo.rendered;
@@ -218,14 +219,13 @@ function updateComposite(prevVnode, newVnode) {
             hostNode = newDom;
         }
         instance.mayInst.hostNode = hostNode;
-        if (instance.componentDidUpdate || newVnode.refType) {
-            if (lifeCycleQueue.indexOf(newVnode) === -1) {
-                lifeCycleQueue.push(newVnode);
-            }
+        if (instance.componentDidUpdate || instance.ref) {
+            instance.mayInst.prevState = prevState;
+            instance.mayInst.prevProps = prevProps;
+            lifeCycleQueue.push(instance);
         }
         //没有回调初始化为0
         instance.mayInst.lifeState = 0;
-
 
     } else { //stateless component
         var prevRendered = prevVnode.mayInfo.rendered;
@@ -234,9 +234,8 @@ function updateComposite(prevVnode, newVnode) {
         if (prevRendered && isSameType(prevRendered, newRendered)) {
             hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
             newRendered.mayInfo.hostNode = hostNode;
-            if (newRendered.ref && typeof newRendered.ref === 'function') {
-                var t = newRendered.mtype === 1 ? hostNode : newRendered;
-                lifeCycleQueue.push(newRendered.ref.bind(t, t));
+            if (newRendered.refType === 1) {
+                lifeCycleQueue.push(newRendered);
             }
         } else if (newVnode) {
             var isSVG = newVnode.mtype === 3;

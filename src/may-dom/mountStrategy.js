@@ -108,10 +108,12 @@ function mountDOM(vnode, isSVG) {
             hostNode._lastValue = _val;
         }
     }
-    if (vnode.ref) {
-        if (lifeCycleQueue.indexOf(vnode) === -1) {
-            lifeCycleQueue.push(vnode);
-        }
+    //本来想放在调度模块的 但是这种vnode type为dom类型的 func是要在DidMount之前调用的
+    //因为DidMount中可能用到;
+    if (vnode.refType === 1) {//func
+        vnode.ref(hostNode);
+    } else if (vnode.refType === 2) {//string
+        Refs.currentOwner.refs[vnode.ref] = hostNode;
     }
     return hostNode;
 }
@@ -145,15 +147,12 @@ function mountComposite(vnode, isSVG) {
         hostNode = document.createComment('empty');
         vnode.mayInfo.hostNode = hostNode;
         vnode.mayInfo.isEmpty = true;
-        if (inst) { //用于isMounted 判断 即使是null
-            inst.mayInst.isEmpty = true;
-            inst.mayInst.hostNode = hostNode;
-        }
+        //用于isMounted 判断 即使是null
+        inst.mayInst.isEmpty = true;
+        inst.mayInst.hostNode = hostNode;
     }
-    if (vnode.ref || inst.componentDidMount) {
-        if (lifeCycleQueue.indexOf(vnode) === -1) {
-            lifeCycleQueue.push(vnode);
-        }
+    if (inst.ref || inst.componentDidMount) {
+        lifeCycleQueue.push(inst);
     } else {
         //如果没有回调则其render生命周期结束lifeState为0
         inst.mayInst.lifeState = 0;

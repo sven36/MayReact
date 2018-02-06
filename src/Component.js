@@ -41,11 +41,11 @@ Component.prototype.setState = function (state, callback) {
     }
 
     switch (lifeState) {
-        case 4: //componentWillReceiveProps触发setState会合并state
+        //componentWillReceiveProps触发setState会合并state
         case 1: //componentWillMount 触发setState会合并state
             return;
-            //ComponentWillReceiveProps 中setState  3
-            //子组件在ComponentWillMount中调用父组件的setState  3
+        //ComponentWillReceiveProps 中setState  3
+        //子组件在ComponentWillMount中调用父组件的setState  3
         case 3:
         case 2: //componentDidMount 触发setState会放到下一周期  2
             if (mayQueue.dirtyComponentsQueue.indexOf(this) === -1) {
