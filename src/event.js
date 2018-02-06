@@ -1,6 +1,6 @@
 import {
     mayQueue
-} from './util';
+} from './may-dom/scheduler';
 
 var globalEvent = {
 

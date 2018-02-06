@@ -1,12 +1,41 @@
-import { mergeState, mayQueue, lifeCycleQueue } from '../util';
-import { mountStrategy } from './mountStrategy'
-import { updateStrategy, isSameType } from './diffStrategy'
-import { diffProps, FormElement, getIsControlled } from '../diffProps'
-import { Refs } from '../Refs';
-import { NAMESPACE } from './DOMNamespaces';
-import { getChildContext, getContextByTypes } from './context';
-import { transformChildren, genKey } from './transformChildren';
-import { disposeVnode, disposeDom, emptyElement } from './dispose';
+import {
+	mergeState
+} from '../util';
+import {
+	mayQueue,
+	lifeCycleQueue
+} from './scheduler';
+import {
+	mountStrategy
+} from './mountStrategy'
+import {
+	updateStrategy,
+	isSameType
+} from './diffStrategy'
+import {
+	diffProps,
+	FormElement,
+	getIsControlled
+} from '../diffProps'
+import {
+	Refs
+} from '../Refs';
+import {
+	NAMESPACE
+} from './DOMNamespaces';
+import {
+	getChildContext,
+	getContextByTypes
+} from './context';
+import {
+	transformChildren,
+	genKey
+} from './transformChildren';
+import {
+	disposeVnode,
+	disposeDom,
+	emptyElement
+} from './dispose';
 
 export function render(vnode, container, callback) {
 	return renderByMay(vnode, container, callback);
@@ -35,14 +64,10 @@ var renderByMay = function (vnode, container, callback) {
 				throw new Error('container参数错误');
 			}
 		} else {
-			console.error('render参数错误');
-			return;
+			throw new Error('render参数错误');
 		}
 	}
 	result = vnode.mayInfo.instance || rootDom;
-	// if (!vnode.mayInfo.instance && rootDom) {
-	// 	result.refs = rootDom.refs;
-	// }
 	//执行render过程中的回调函数lifeCycle ref等
 	mayQueue.clearQueue();
 	if (callback) { //render的 callback
@@ -212,5 +237,3 @@ export function findDOMNode(ref) {
 	}
 	return ret;
 }
-
-

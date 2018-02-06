@@ -1,11 +1,35 @@
-import { diffProps, FormElement, getIsControlled } from '../diffProps'
-import { Refs } from '../Refs';
-import { mergeState, mayQueue, lifeCycleQueue } from '../util';
-import { NAMESPACE } from './DOMNamespaces';
-import { getChildContext, getContextByTypes } from './context';
-import { transformChildren } from './transformChildren';
-import { getIteractor, callIteractor } from './Iteractor';
-import { buildComponentFromVnode } from './instantiateComponent';
+import {
+    diffProps,
+    FormElement,
+    getIsControlled
+} from '../diffProps'
+import {
+    Refs
+} from '../Refs';
+import {
+    mergeState
+} from '../util';
+import {
+    mayQueue,
+    lifeCycleQueue
+} from './scheduler';
+import {
+    NAMESPACE
+} from './DOMNamespaces';
+import {
+    getChildContext,
+    getContextByTypes
+} from './context';
+import {
+    transformChildren
+} from './transformChildren';
+import {
+    getIteractor,
+    callIteractor
+} from './Iteractor';
+import {
+    buildComponentFromVnode
+} from './instantiateComponent';
 
 
 
@@ -19,6 +43,7 @@ export var mountStrategy = {
     3: mountDOM, //svg dom
     4: mountText //text
 }
+
 function mountDOM(vnode, isSVG) {
     var vtype = vnode.type;
     vnode.mayInfo.isSVG = isSVG;
@@ -83,14 +108,17 @@ function mountDOM(vnode, isSVG) {
         }
     }
     if (vnode.ref) {
-        var ref = vnode.ref;
-        var owner = Refs.currentOwner;
-        var refInst = vnode.mayInfo.instance || vnode.mayInfo.hostNode || null;
-        if (typeof ref === 'function') {
-            lifeCycleQueue.push(ref.bind(owner, refInst));
-        } else if (typeof ref === 'string') { //ref 为string
-            owner.refs[ref] = refInst;
+        if (lifeCycleQueue.indexOf(vnode) === -1) {
+            lifeCycleQueue.push(vnode);
         }
+        // var ref = vnode.ref;
+        // var owner = Refs.currentOwner;
+        // var refInst = vnode.mayInfo.instance || vnode.mayInfo.hostNode || null;
+        // if (typeof ref === 'function') {
+        //     lifeCycleQueue.push(ref.bind(owner, refInst));
+        // } else if (typeof ref === 'string') { //ref 为string
+        //     owner.refs[ref] = refInst;
+        // }
     }
     return hostNode;
 }
@@ -100,11 +128,11 @@ function mountDOM(vnode, isSVG) {
 function mountComposite(vnode, isSVG) {
     var hostNode = null;
     var rendered = buildComponentFromVnode(vnode);
-    if (!Refs.currentOwner && vnode.mayInfo.instance) { //!Refs.currentOwner && 
-        Refs.currentOwner = vnode.mayInfo.instance;
-        vnode.mayInfo.instance.refs = {};
-    }
     var inst = vnode.mayInfo.instance || null;
+    if (inst && inst.mayInst.mountOrder === 0) {
+        Refs.currentOwner = inst;
+        inst.refs = {};
+    }
     if (rendered) {
         if (!isSVG) {
             //svg的子节点namespace也是svg
@@ -129,24 +157,15 @@ function mountComposite(vnode, isSVG) {
             inst.mayInst.hostNode = hostNode;
         }
     }
-    if (inst && inst.componentDidMount) {
-        var cb = inst.componentDidMount.bind(inst);
-        cb.instance = inst;
-        lifeCycleQueue.push(cb);
+    if (vnode.ref || (inst && inst.componentDidMount)) {
+        if (lifeCycleQueue.indexOf(vnode) === -1) {
+            lifeCycleQueue.push(vnode);
+        }
     } else {
         //如果没有回调则其render生命周期结束lifeState为0
         inst && (inst.mayInst.lifeState = 0);
     }
-    if (vnode.ref) {
-        var ref = vnode.ref;
-        var owner = Refs.currentOwner;
-        var refInst = inst || vnode.mayInfo.hostNode || null;
-        if (typeof ref === 'function') {
-            lifeCycleQueue.push(ref.bind(owner, vnode.mayInfo.stateless ? null : refInst));
-        } else if (typeof ref === 'string') { //ref 为string
-            owner.refs[ref] = refInst;
-        }
-    }
+
     return hostNode;
 }
 

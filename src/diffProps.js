@@ -12,7 +12,7 @@ import {
 } from './Refs';
 import {
     mayQueue
-} from './util';
+} from './may-dom/scheduler';
 
 
 //之前是 mount的时候setDomAttr一个方法 diff的时候diffProps一个方法

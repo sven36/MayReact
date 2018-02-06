@@ -1,11 +1,37 @@
-import { disposeVnode, disposeDom, emptyElement } from './dispose';
-import { diffProps, FormElement, getIsControlled } from '../diffProps'
-import { getChildContext, getContextByTypes } from './context';
-import { mergeState, mayQueue, lifeCycleQueue } from '../util';
-import { transformChildren, genKey } from './transformChildren';
-import { Refs } from '../Refs';
-import { NAMESPACE } from './DOMNamespaces';
-import { mountStrategy } from './mountStrategy'
+import {
+    disposeVnode,
+    disposeDom,
+    emptyElement
+} from './dispose';
+import {
+    diffProps,
+    FormElement,
+    getIsControlled
+} from '../diffProps'
+import {
+    getChildContext,
+    getContextByTypes
+} from './context';
+import {
+    mergeState
+} from '../util';
+import {
+    mayQueue,
+    lifeCycleQueue
+} from './scheduler';
+import {
+    transformChildren,
+    genKey
+} from './transformChildren';
+import {
+    Refs
+} from '../Refs';
+import {
+    NAMESPACE
+} from './DOMNamespaces';
+import {
+    mountStrategy
+} from './mountStrategy'
 
 //diff根据vnode的不同类型调用不同的diff方法~
 //其实写着写着就发现还是类似React 根据不同的类型生成不同的Component
@@ -16,6 +42,7 @@ export var updateStrategy = {
     3: updateDOM, //svg dom
     4: updateText //text
 }
+
 function updateDOM(prevVnode, newVnode) {
     var hostNode = (prevVnode && prevVnode.mayInfo.hostNode) || null;
     var vtype = newVnode.type;
@@ -68,14 +95,14 @@ function updateDOM(prevVnode, newVnode) {
 }
 
 function updateComposite(prevVnode, newVnode) {
-    if (prevVnode.ref && typeof prevVnode.ref === 'function') {
+    if (prevVnode.refType === 1) {
         prevVnode.ref(null);
     }
     //如果newVnode没有定义contextTypes 在componentWillReceiveProps等生命周期方法中
     //是不应该传入context的 那么用空的temporaryContext代替
     var temporaryContext = {};
     var context = newVnode.context || {};
-    if (newVnode.type && newVnode.type.contextTypes) {
+    if (newVnode.getContext) {
         context = getContextByTypes(context, newVnode.type.contextTypes);
         temporaryContext = context;
     }
@@ -187,19 +214,19 @@ function updateComposite(prevVnode, newVnode) {
             instance.mayInst.dirty = false;
             instance.mayInst.needNextRender = false;
         }
-        if (instance.componentDidUpdate) {
-            lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, prevProps, prevState, instance.context));
-        } else {
-            //没有回调初始化为0
-            instance.mayInst.lifeState = 0;
-        }
-        if (newVnode.ref && typeof newVnode.ref === 'function') {
-            lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
-        }
         if (newDom) {
             hostNode = newDom;
         }
         instance.mayInst.hostNode = hostNode;
+        if (instance.componentDidUpdate || newVnode.refType) {
+            if (lifeCycleQueue.indexOf(newVnode) === -1) {
+                lifeCycleQueue.push(newVnode);
+            }
+        }
+        //没有回调初始化为0
+        instance.mayInst.lifeState = 0;
+
+
     } else { //stateless component
         var prevRendered = prevVnode.mayInfo.rendered;
         var newRendered = newVnode.type.call(newVnode, newVnode.props, newVnode.context);

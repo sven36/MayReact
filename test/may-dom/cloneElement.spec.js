@@ -1,4 +1,4 @@
-import React from "../../dist/May";
+import React from "../../src/May";
 var cloneElement=React.cloneElement;
 describe("cloneElement", function () {
     it("test", () => {
