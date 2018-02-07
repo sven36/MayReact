@@ -50,8 +50,9 @@ export function buildComponentFromVnode(vnode) {
     } else {
         //StatelessComponent 我们赋给它一个inst 省去之后判断inst是否为空等;
         inst = {
-            stateless: true,
-            mayInst: {},
+            mayInst: {
+                stateless: true
+            },
             render: function (type) {
                 return type(this.props, this.context);
             }

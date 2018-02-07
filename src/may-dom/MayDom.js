@@ -69,15 +69,16 @@ var renderByMay = function (vnode, container, callback) {
 			throw new Error('render参数错误');
 		}
 	}
-	result = vnode.mayInfo.instance || rootDom;
+	var instance = vnode.mayInfo.instance;
+	result = instance && !instance.mayInst.stateless && instance || rootDom;
 	//执行render过程中的回调函数lifeCycle ref等
 	mayQueue.clearQueue();
 	if (callback) { //render的 callback
 		callback();
 	}
-	if (vnode.mayInfo.instance) {
+	if (instance) {
 		//render之后lifeState也初始化为0；
-		vnode.mayInfo.instance.mayInst.lifeState = 0;
+		instance.mayInst.lifeState = 0;
 		//当我开始着手解决 层层嵌套的component 最底层的那个setState触发的时候lifeState并不为0
 		//因为我不能确定其是否有componentDidMount的回调，它在这个回调setState是需要放到下一周期处理的
 		//一种办法是该instance如果具备componentDidMount我把其lifeState标个值如10 setState的时候判断
@@ -131,7 +132,8 @@ export function reRender(instance) {
 
 		updated.mayInfo.hostNode = hostNode;
 		hostNode = updateStrategy[updated.mtype](prevRendered, updated);
-		updated.mayInfo.instance = instance;
+		//mtype === 1在这在设置instance会循环引用
+		updated.mtype === 2 && (updated.mayInfo.instance = instance);
 		updated.mayInfo.vChildren = transformChildren(updated, hostNode);
 		instance.mayInst.forceUpdate = null;
 		instance.mayInst.hostNode = hostNode;
@@ -145,8 +147,9 @@ export function reRender(instance) {
 		//should provide up to date values for props
 		// diffProps(prevRenderedVnode, updatedVnode);
 	} else {
-		if (!Refs.currentOwner) {
+		if (Refs.isRoot) {
 			Refs.currentOwner = instance;
+			Refs.isRoot = false;
 		}
 		var isSVG = updated.mtype === 3;
 		var dom = mountStrategy[updated.mtype](updated, isSVG);
@@ -185,7 +188,7 @@ export function reRender(instance) {
 
 function mayUpdate(prevVnode, newVnode, parent) {
 	var dom;
-	if (prevVnode.type === newVnode.type) {
+	if (isSameType(prevVnode, newVnode)) {
 		dom = updateStrategy[newVnode.mtype](prevVnode, newVnode);
 	} else {
 		var isSVG = newVnode.mtype === 3;

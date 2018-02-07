@@ -7,7 +7,8 @@ import {
     Refs
 } from '../Refs';
 import {
-    mergeState
+    mergeState,
+    recyclables
 } from '../util';
 import {
     mayQueue,
@@ -110,10 +111,8 @@ function mountDOM(vnode, isSVG) {
     }
     //本来想放在调度模块的 但是这种vnode type为dom类型的 func是要在DidMount之前调用的
     //因为DidMount中可能用到;
-    if (vnode.refType === 1) {//func
-        vnode.ref(hostNode);
-    } else if (vnode.refType === 2) {//string
-        Refs.currentOwner.refs[vnode.ref] = hostNode;
+    if (vnode.ref) {
+        Refs.attachRef(vnode, hostNode);
     }
     return hostNode;
 }
@@ -163,6 +162,11 @@ function mountComposite(vnode, isSVG) {
 
 function mountText(vnode) {
     if (vnode) {
+        var node = recyclables['#text'].pop()
+        if (node) {
+            node.nodeValue = node.value;
+            return node;
+        }
         return document.createTextNode(vnode.value);
     } else {
         return document.createComment('empty');

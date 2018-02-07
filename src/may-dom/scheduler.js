@@ -31,24 +31,25 @@ function clearQueue() {
 
 function flushUpdates() {
     var c;
+    var i = 0;
     //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理
     mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
     while (c = mayQueue.dirtyComponentsQueue.shift()) {
+        if (i++ === 0) {
+            Refs.isRoot = true;
+        }
         if (c.mayInst.dirty) {
             //如果C是脏组件diff 如果其在diff过程中子组件也需要diff diff之后
             //子组件_dirty会为false 没必要再diff一次；
             reRender(c);
-
-
         }
+        //ComponentDidUpdate
+        clearLifeCycleQueue();
         if (c) {
             //diff之后组件的状态返回0
             c.mayInst.lifeState = 0;
         }
     }
-
-    //ComponentDidUpdate
-    clearLifeCycleQueue();
     //防止setState currentOwner混乱
     Refs.currentOwner = null;
 }
@@ -69,7 +70,7 @@ function clearLifeCycleQueue() {
             if (instance.mayInst.lifeState === 2) {
                 instance.componentDidMount && instance.componentDidMount();
             } else {
-                instance.componentDidUpdate && instance.componentDidUpdate(instance.mayInst.prevProps, instance.mayInst.prevState);
+                instance.componentDidUpdate && instance.componentDidUpdate(instance.mayInst.prevProps, instance.mayInst.prevState, instance.context);
             }
             if (instance.refType === 1) {
                 instance.ref(refInst);

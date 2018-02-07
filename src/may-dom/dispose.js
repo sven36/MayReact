@@ -1,57 +1,67 @@
+import {
+    recyclables
+} from '../util';
 export function disposeVnode(vnode) {
     if (!vnode) {
         return;
     }
-    var children = vnode.props && vnode.props.children;
-    if (vnode.ref && typeof vnode.ref === 'function') {
+    var children = vnode.mayInfo.vChildren;
+    if (vnode.refType === 1) {
         vnode.ref(null);
         vnode.ref = null;
     }
 
     if (vnode.mayInfo.instance) {
-        if (vnode.mayInfo.instance.setState) {
-            vnode.mayInfo.instance.setState = noop;
+        disposeComponent(vnode, vnode.mayInfo.instance);
+    }
+
+    if (children) {
+        for (var c in children) {
+            children[c].forEach(function (child) {
+                disposeVnode(child);
+            })
         }
-        if (vnode.mayInfo.instance.componentWillUnmount) {
-            vnode.mayInfo.instance.componentWillUnmount();
-        }
-        vnode.mayInfo.instance.refs = null;
-        vnode.mayInfo.instance = null;
     }
-    if (vnode.mayInfo.rendered) {
-        disposeVnode(vnode.mayInfo.rendered);
-        vnode.mayInfo.rendered = null;
-    }
-    if (children && children.length > 0) {
-        for (var i = 0; i < children.length; i++) {
-            var c = children[i];
-            var type = typeof c;
-            if (c && type === 'object') {
-                disposeVnode(c);
-            }
-        }
-    } else if (children && typeof children === 'object') {
-        disposeVnode(children);
-    }
-    if (vnode.mayInfo.prevVnode) {
-        vnode.mayInfo.prevVnode = null;
-    }
-    if (vnode.mayInfo.hostNode) {
-        disposeDom(vnode.mayInfo.hostNode);
-        vnode.mayInfo.hostNode = null;
-    }
+    // if (vnode.mayInfo.hostNode) {
+    //     disposeDom(vnode.mayInfo.hostNode);
+    // }
     vnode.mayInfo = {};
-    vnode = null;
 }
 
+export function disposeComponent(vnode, instance) {
+    if (instance.setState) {
+        instance.setState = noop;
+        instance.forceUpdate = noop;
+    }
+    if (instance.componentWillUnmount) {
+        instance.componentWillUnmount();
+        instance.componentWillUnmount = noop;
+    }
+    if (instance.mayInst.rendered) {
+        vnode.mayInfo.rendered = null;
+        disposeVnode(instance.mayInst.rendered);
+    }
+    instance.mayInst.forceUpdate = instance.mayInst.dirty = vnode.mayInfo.instance = instance.mayInst = null;
+}
+var isStandard = 'textContext' in document;
+var fragment = document.createDocumentFragment();
 export function disposeDom(dom) {
     if (dom._listener) {
         dom._listener = null;
     }
-    if (dom.parentNode) {
-        dom.parentNode.removeChild(dom);
-        dom = null;
+    if (dom.nodeType === 1) {
+        if (isStandard) {
+            dom.textContext = '';
+        } else {
+            emptyElement(dom);
+        }
+    } else if (dom.nodeType === 3) {
+        if (recyclables['#text'].length < 100) {
+            recyclables['#text'].push(dom);
+        }
     }
+    fragment.appendChild(dom);
+    fragment.removeChild(dom);
 }
 export function emptyElement(dom) {
     var c;
@@ -60,4 +70,5 @@ export function emptyElement(dom) {
         dom.removeChild(c);
     }
 }
-function noop() { };
+
+function noop() {};

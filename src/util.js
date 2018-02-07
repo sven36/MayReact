@@ -1,5 +1,9 @@
 
 
+//文本节点重复利用 借(chao)鉴(xi) anu
+export var recyclables={
+    '#text':[]
+}
 export function mergeState(instance) {
     var newState;
     var prevState = instance.state;

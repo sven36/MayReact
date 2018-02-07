@@ -43,33 +43,31 @@ export function diffProps(prev, now) {
                 removeDomAttr(hostNode, prevProps, prop);
             }
         }
-        var _ref = prev.ref;
-        var ref = now && now.ref;
-        if (_ref) {
-            if (typeof _ref === 'function') {
-                prev.ref(null);
-                prev.ref = null;
-            } else {
-                if (Refs.currentOwner && Refs.currentOwner.refs[_ref]) {
-                    Refs.currentOwner.refs[_ref] = null;
-                }
-            }
-        }
-        if (ref) {
-            if (typeof ref === 'function') {
-                mayQueue.lifeCycleQueue.push(now.ref.bind(now, now));
-            }
-            if (typeof ref === 'string') {
-                if (Refs.currentOwner) {
-                    if (Refs.currentOwner.refs) {
-                        Refs.currentOwner.refs[ref] = hostNode;
-                    } else {
-                        Refs.currentOwner.refs = {};
-                        Refs.currentOwner.refs[ref] = hostNode;
-                    }
-                }
-            }
-        }
+        // var _ref = prev.ref;
+        // var ref = now && now.ref;
+        // if (prev.refType === 1) {
+        //     prev.ref(null);
+        //     prev.ref = null;
+        // } else if (prev.refType === 2) {
+        //     if (Refs.currentOwner && Refs.currentOwner.refs[_ref]) {
+        //         Refs.currentOwner.refs[_ref] = null;
+        //     }
+        // }
+
+        // if (ref) {
+        //     if (now.refType === 1) {
+        //         mayQueue.lifeCycleQueue.push(now.ref.bind(now, now));
+        //     } else if (now.refType === 2) {
+        //         if (Refs.currentOwner) {
+        //             if (Refs.currentOwner.refs) {
+        //                 Refs.currentOwner.refs[ref] = hostNode;
+        //             } else {
+        //                 Refs.currentOwner.refs = {};
+        //                 Refs.currentOwner.refs[ref] = hostNode;
+        //             }
+        //         }
+        //     }
+        // }
         if (prevStyle !== nowStyle) {
             patchStyle(hostNode, prevStyle, nowStyle);
         }

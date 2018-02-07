@@ -49,6 +49,11 @@ function updateDOM(prevVnode, newVnode) {
     if (!newVnode.mayInfo.hostNode) {
         newVnode.mayInfo.hostNode = hostNode;
     }
+    if (Refs.isRoot) {
+        Refs.currentOwner = hostNode;
+        hostNode.refs = {};
+        Refs.isRoot = false;
+    }
     var isSVG = hostNode && hostNode.namespaceURI === NAMESPACE.svg;
     if (isSVG) {
         newVnode.mayInfo.isSVG = true;
@@ -90,6 +95,9 @@ function updateDOM(prevVnode, newVnode) {
         }
 
     }
+    if (newVnode.ref) {
+        Refs.attachRef(newVnode, hostNode);
+    }
 
     return hostNode;
 }
@@ -112,7 +120,7 @@ function updateComposite(prevVnode, newVnode) {
     var hostNode = prevVnode.mayInfo.hostNode;
     var newDom, newRendered, prevState, prevProps;
     var skip = false;
-    if (instance) {
+    if (!instance.mayInst.stateless) {
         //需要兼容componentWillReceiveProps直接this.state={///}的情况
         //先保存下之前的state
         prevState = instance.state;
@@ -172,9 +180,10 @@ function updateComposite(prevVnode, newVnode) {
         }
         instance.state = newState;
         instance.context = context;
-        if (!Refs.currentOwner) {
+        if (Refs.isRoot) {
             Refs.currentOwner = instance;
             Refs.currentOwner.refs = {};
+            Refs.isRoot = false;
         }
 
         var prevRendered = prevVnode.mayInfo.rendered;
@@ -189,11 +198,7 @@ function updateComposite(prevVnode, newVnode) {
                 hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
                 newRendered.mayInfo.hostNode = hostNode;
             } else {
-                //componentWillUnmount需要先执行
-                if (prevRendered.mayInfo.instance && prevRendered.mayInfo.instance.componentWillUnmount) {
-                    prevRendered.mayInfo.instance.componentWillUnmount();
-                    prevRendered.mayInfo.instance.componentWillUnmount = null;
-                }
+                disposeVnode(prevRendered);
                 var isSVG = newRendered.mtype === 3;
                 newDom = mountStrategy[newRendered.mtype](newRendered, isSVG);
                 newRendered.mayInfo.hostNode = newDom;
@@ -234,9 +239,10 @@ function updateComposite(prevVnode, newVnode) {
         if (prevRendered && isSameType(prevRendered, newRendered)) {
             hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
             newRendered.mayInfo.hostNode = hostNode;
-            if (newRendered.refType === 1) {
-                lifeCycleQueue.push(newRendered);
-            }
+            // if (newRendered.refType === 1) {
+            //     //type='div'之类的ref直接调用
+            //     newRendered.mtype === 1 ? newRendered.ref(hostNode) : lifeCycleQueue.push(newRendered);
+            // }
         } else if (newVnode) {
             var isSVG = newVnode.mtype === 3;
             newDom = mountStrategy[newVnode.mtype](newVnode, isSVG);
@@ -379,6 +385,9 @@ function flushMounts(newChildren, parent) {
 function flushUnMounts(oldChildren) {
     var c;
     while (c = oldChildren.shift()) {
+        if (c.mayInfo.hostNode) {
+            disposeDom(c.mayInfo.hostNode);
+        }
         disposeVnode(c);
         c = null;
     }
