@@ -210,7 +210,7 @@ describe("ref", function () {
         }
         ReactTestUtils.renderIntoDocument(<App ref={refFn} />);
      
-        expect(b).toBe(null);
+        expect(b).toBe(undefined);
 
     });
     it("ReactDOM.render中的元素也会被执行", function() {

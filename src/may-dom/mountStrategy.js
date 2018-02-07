@@ -150,11 +150,14 @@ function mountComposite(vnode, isSVG) {
         inst.mayInst.isEmpty = true;
         inst.mayInst.hostNode = hostNode;
     }
-    if (inst.ref || inst.componentDidMount) {
-        lifeCycleQueue.push(inst);
+    if (inst.componentDidMount) {
+        lifeCycleQueue.push(inst.componentDidMount.bind(inst));
     } else {
         //如果没有回调则其render生命周期结束lifeState为0
         inst.mayInst.lifeState = 0;
+    }
+    if (vnode.ref) {
+        Refs.attachRef(vnode, inst);
     }
 
     return hostNode;

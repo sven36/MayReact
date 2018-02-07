@@ -165,14 +165,8 @@ export function reRender(instance) {
 	}
 
 	if (instance.componentDidUpdate) {
-		instance.mayInst.prevProps = prevProps;
-		instance.mayInst.prevState = prevState;
-		lifeCycleQueue.push(instance);
-		// if (instance.mayInst.needNextRender) {
-		// 	instance.componentDidUpdate(props, prevState, instance.context);
-		// } else {
-		// 	lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.props, instance.state, instance.context));
-		// }
+		instance.componentDidUpdate(prevProps, prevState, instance.context);
+		// lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, prevProps, prevState, instance.context));
 	} else {
 		instance.mayInst.lifeState = 0;
 	}

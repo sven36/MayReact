@@ -7,7 +7,7 @@ import {
 
 //mayQueue 保存render过程中的各种事件队列 
 export var mayQueue = {
-    dirtyComponentsQueue: [], //setState 需要diff的component队列
+    dirtyComponentsQueue: [], //setState 需要diff的component队列 
     callbackQueue: [], //回调队列 setState 中的事件回调
     lifeCycleQueue: [], //生命周期过程中的回调队列 DidUpdate DidMount ref回调
     isInEvent: false, //是否在触发事件 回调事件中的setstate合并触发
@@ -23,6 +23,7 @@ export var lifeCycleQueue = mayQueue.lifeCycleQueue;
 function clearQueue() {
     //ComponentDidMount
     clearLifeCycleQueue();
+
     //如有有dirty Component diff
     flushUpdates();
     //setState传入的回调函数
@@ -30,26 +31,27 @@ function clearQueue() {
 }
 
 function flushUpdates() {
-    var c;
+    var instance;
     var i = 0;
     //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理
     mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
-    while (c = mayQueue.dirtyComponentsQueue.shift()) {
+    while (instance = mayQueue.dirtyComponentsQueue.shift()) {
         if (i++ === 0) {
             Refs.isRoot = true;
         }
-        if (c.mayInst.dirty) {
+        if (instance.mayInst.dirty) {
             //如果C是脏组件diff 如果其在diff过程中子组件也需要diff diff之后
             //子组件_dirty会为false 没必要再diff一次；
-            reRender(c);
+            reRender(instance);
         }
-        //ComponentDidUpdate
-        clearLifeCycleQueue();
-        if (c) {
+
+        if (instance) {
             //diff之后组件的状态返回0
-            c.mayInst.lifeState = 0;
+            instance.mayInst.lifeState = 0;
         }
     }
+    //ComponentDidUpdate
+    clearLifeCycleQueue();
     //防止setState currentOwner混乱
     Refs.currentOwner = null;
 }
@@ -57,26 +59,12 @@ function flushUpdates() {
 function clearLifeCycleQueue() {
     //先清空 生命周期 ref 的回调函数
     if (mayQueue.lifeCycleQueue && mayQueue.lifeCycleQueue.length > 0) {
-        var instance;
+        var callback;
         //其实ref很像生命周期函数,它比较特殊的地方在于vnode.type='div'之类的vnode
         //其string ref要指向其真实dom func ref也是回调真实的dom 其它的都是回调instance
         //vnode.type='div'之类的ref特殊处理;剩余的就和生命周期很像了;
-        while (instance = mayQueue.lifeCycleQueue.shift()) {
-            var refInst = instance.mayInst.stateless ? null : instance;
-            //如果是string 需要在componentDidMount之前赋值
-            if (instance.refType === 2) {
-                Refs.currentOwner.refs[instance.ref] = instance;
-            }
-            if (instance.mayInst.lifeState === 2) {
-                instance.componentDidMount && instance.componentDidMount();
-            } else {
-                instance.componentDidUpdate && instance.componentDidUpdate(instance.mayInst.prevProps, instance.mayInst.prevState, instance.context);
-            }
-            if (instance.refType === 1) {
-                instance.ref(refInst);
-            }
-            //componentDidMount DidUpdate之后其lifeState为0
-            instance.mayInst.lifeState = 0;
+        while (callback = mayQueue.lifeCycleQueue.shift()) {
+            callback();
         }
     }
 }

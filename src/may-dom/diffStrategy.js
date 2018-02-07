@@ -224,13 +224,15 @@ function updateComposite(prevVnode, newVnode) {
             hostNode = newDom;
         }
         instance.mayInst.hostNode = hostNode;
-        if (instance.componentDidUpdate || instance.ref) {
-            instance.mayInst.prevState = prevState;
-            instance.mayInst.prevProps = prevProps;
-            lifeCycleQueue.push(instance);
+        if (instance.componentDidUpdate) {
+            lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, prevProps, prevState, instance.context));
+        } else {
+            //如果没有回调则其render生命周期结束lifeState为0
+            instance.mayInst.lifeState = 0;
         }
-        //没有回调初始化为0
-        instance.mayInst.lifeState = 0;
+        if (newRendered.ref) {
+            Refs.attachRef(newRendered, instance);
+        }
 
     } else { //stateless component
         var prevRendered = prevVnode.mayInfo.rendered;
@@ -239,10 +241,7 @@ function updateComposite(prevVnode, newVnode) {
         if (prevRendered && isSameType(prevRendered, newRendered)) {
             hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
             newRendered.mayInfo.hostNode = hostNode;
-            // if (newRendered.refType === 1) {
-            //     //type='div'之类的ref直接调用
-            //     newRendered.mtype === 1 ? newRendered.ref(hostNode) : lifeCycleQueue.push(newRendered);
-            // }
+
         } else if (newVnode) {
             var isSVG = newVnode.mtype === 3;
             newDom = mountStrategy[newVnode.mtype](newVnode, isSVG);

@@ -610,7 +610,7 @@ describe("生命周期例子", function () {
             "ReactDOM cb"
         ]);
     });
-    it("事件回调里执行多个组件的setState，不会按触发时的顺序执行，而是按文档顺序执行",function(){
+    /*it("事件回调里执行多个组件的setState，不会按触发时的顺序执行，而是按文档顺序执行",function(){
         var list = [];
         class App extends React.Component {
             constructor(props) {
@@ -672,5 +672,5 @@ describe("生命周期例子", function () {
             "b的回调",
             "c的回调"
         ]);
-    });//*/
+    });*/
 });
