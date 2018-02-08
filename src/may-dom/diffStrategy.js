@@ -44,6 +44,9 @@ export var updateStrategy = {
 }
 
 function updateDOM(prevVnode, newVnode) {
+    if (prevVnode.refType === 1) {
+        prevVnode.ref(null);
+    }
     var hostNode = (prevVnode && prevVnode.mayInfo.hostNode) || null;
     var vtype = newVnode.type;
     if (!newVnode.mayInfo.hostNode) {
@@ -230,8 +233,8 @@ function updateComposite(prevVnode, newVnode) {
             //如果没有回调则其render生命周期结束lifeState为0
             instance.mayInst.lifeState = 0;
         }
-        if (newRendered.ref) {
-            Refs.attachRef(newRendered, instance);
+        if (newVnode.refType === 1) {
+            Refs.attachRef(newVnode, instance);
         }
 
     } else { //stateless component

@@ -7,6 +7,7 @@ export var Refs = {
     isRoot: false,
     attachRef: function (vnode, hostNode) {
         if (vnode.refType === 1) { //func
+            hostNode.mayInst && hostNode.mayInst.stateless && (hostNode = null);
             lifeCycleQueue.push(vnode.ref.bind(vnode, hostNode));
         } else if (vnode.refType === 2) { //string
             this.currentOwner.refs[vnode.ref] = hostNode;

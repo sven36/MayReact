@@ -121,6 +121,10 @@ export function reRender(instance) {
 		// instance.mayInst.hostNode = hostNode;
 		return hostNode;
 	}
+	if (Refs.isRoot) {
+		Refs.currentOwner = instance;
+		Refs.isRoot = false;
+	}
 	var updated = instance.render(prevProps, context);
 	instance.mayInst.rendered = updated;
 	updated && (updated.context = context);
@@ -147,10 +151,7 @@ export function reRender(instance) {
 		//should provide up to date values for props
 		// diffProps(prevRenderedVnode, updatedVnode);
 	} else {
-		if (Refs.isRoot) {
-			Refs.currentOwner = instance;
-			Refs.isRoot = false;
-		}
+
 		var isSVG = updated.mtype === 3;
 		var dom = mountStrategy[updated.mtype](updated, isSVG);
 		//component上的hostNode保持最新

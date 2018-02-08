@@ -37,6 +37,9 @@ export function disposeComponent(vnode, instance) {
         instance.componentWillUnmount();
         instance.componentWillUnmount = noop;
     }
+    if (instance.refs) {
+        instance.refs = null;
+    }
     if (instance.mayInst.rendered) {
         vnode.mayInfo.rendered = null;
         disposeVnode(instance.mayInst.rendered);
@@ -71,4 +74,4 @@ export function emptyElement(dom) {
     }
 }
 
-function noop() {};
+function noop() { };
