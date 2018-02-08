@@ -3,9 +3,6 @@ import {
     getBrowserName,
     eventHooks
 } from './event';
-import {
-    diffChildren
-} from './may-dom/MayDom';
 
 import {
     Refs
