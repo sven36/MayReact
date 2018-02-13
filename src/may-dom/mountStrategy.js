@@ -57,49 +57,47 @@ function mountDOM(vnode, isSVG) {
     vnode.mayInfo.hostNode = hostNode;
     diffProps(null, vnode);
 
-    var children = vnode.props.children || null;
-    if (children && !Array.isArray(children)) {
+    var children = vnode.props.children;
+    if (!Array.isArray(children)) {
         children = [children];
     }
     var props = vnode.props;
     var cdom, c, parentContext;
 
-    if (children) {
-        var len = children.length;
-        for (let i = 0; i < len; i++) {
-            var c = children[i];
-            var type = typeof c;
-            switch (type) {
-                case 'number':
-                case 'string':
-                    cdom = document.createTextNode(c);
-                    if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
-                        cdom.nodeValue += children[i + 1];
-                        i++;
-                    }
+    var len = children.length;
+    for (let i = 0; i < len; i++) {
+        var c = children[i];
+        var type = typeof c;
+        switch (type) {
+            case 'number':
+            case 'string':
+                cdom = document.createTextNode(c);
+                if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
+                    cdom.nodeValue += children[i + 1];
+                    i++;
+                }
+                hostNode.appendChild(cdom);
+                break;
+            case 'object': //vnode
+                if (c.type) {
+                    c.context = getContextByTypes(vnode.context, c.type.contextTypes);
+                    cdom = mountStrategy[c.mtype](c, isSVG);
+                    c.mayInfo.hostNode = cdom;
                     hostNode.appendChild(cdom);
-                    break;
-                case 'object': //vnode
-                    if (c.type) {
-                        c.context = getContextByTypes(vnode.context, c.type.contextTypes);
-                        cdom = mountStrategy[c.mtype](c, isSVG);
-                        c.mayInfo.hostNode = cdom;
-                        hostNode.appendChild(cdom);
-                    } else { //有可能是子数组iterator
-                        var iteratorFn = getIteractor(c);
-                        if (iteratorFn) {
-                            var ret = callIteractor(iteratorFn, c);
-                            for (var _i = 0; _i < ret.length; _i++) {
-                                cdom = mountStrategy[ret[_i].mtype](ret[_i], isSVG);
-                                ret[_i].mayInfo.hostNode = cdom;
-                                hostNode.appendChild(cdom);
-                            }
+                } else { //有可能是子数组iterator
+                    var iteratorFn = getIteractor(c);
+                    if (iteratorFn) {
+                        var ret = callIteractor(iteratorFn, c);
+                        for (var _i = 0; _i < ret.length; _i++) {
+                            cdom = mountStrategy[ret[_i].mtype](ret[_i], isSVG);
+                            ret[_i].mayInfo.hostNode = cdom;
+                            hostNode.appendChild(cdom);
                         }
                     }
-            }
+                }
         }
-        vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
     }
+    vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
 
     if (FormElement[vtype]) {
         //如果是受控组件input select之类需要特殊处理下

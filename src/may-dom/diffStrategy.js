@@ -246,6 +246,7 @@ function updateComposite(prevVnode, newVnode) {
             newRendered.mayInfo.hostNode = hostNode;
 
         } else if (newVnode) {
+            disposeVnode(prevRendered);
             var isSVG = newVnode.mtype === 3;
             newDom = mountStrategy[newVnode.mtype](newVnode, isSVG);
             newVnode.mayInfo.hostNode = newDom;

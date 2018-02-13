@@ -22,9 +22,7 @@ export function disposeVnode(vnode) {
             })
         }
     }
-    // if (vnode.mayInfo.hostNode) {
-    //     disposeDom(vnode.mayInfo.hostNode);
-    // }
+
     vnode.mayInfo = {};
 }
 
