@@ -87,5 +87,5 @@ Component.prototype.forceUpdate = function (callback) {
 
 }
 Component.prototype.isMounted = function () {
-    return this.mayInst ? (!!this.mayInst.hostNode || this.mayInst.isEmpty) : false;
+    return this.mayInst ? (!!(this.mayInst.rendered && this.mayInst.rendered.mayInfo.hostNode) || this.mayInst.isEmpty) : false;
 }

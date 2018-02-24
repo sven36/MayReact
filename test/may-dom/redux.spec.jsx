@@ -83,7 +83,7 @@ describe("Redux", function () {
 		expect(s.refs.a.tagName).toBe("BUTTON");
 		ReactTestUtils.Simulate.click(s.refs.a);
 
-		expect(s.refs.value.innerHTML).toBe("1");
+		expect(s.refs.value.innerHTML).toBe("10");//1
 		// await browser
 		// 	.click(s.refs.a)
 		// 	.pause(100)

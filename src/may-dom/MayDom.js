@@ -79,6 +79,7 @@ var renderByMay = function (vnode, container, callback) {
 	if (instance) {
 		//render之后lifeState也初始化为0；
 		instance.mayInst.lifeState = 0;
+		instance.mayInst.hostNode = rootDom;
 		//当我开始着手解决 层层嵌套的component 最底层的那个setState触发的时候lifeState并不为0
 		//因为我不能确定其是否有componentDidMount的回调，它在这个回调setState是需要放到下一周期处理的
 		//一种办法是该instance如果具备componentDidMount我把其lifeState标个值如10 setState的时候判断
@@ -118,7 +119,6 @@ export function reRender(instance) {
 	}
 	if (skip) {
 		instance.mayInst.dirty = false;
-		// instance.mayInst.hostNode = hostNode;
 		return hostNode;
 	}
 	if (Refs.isRoot) {
@@ -134,13 +134,13 @@ export function reRender(instance) {
 	}
 	if (!isEmpty && isSameType(prevRendered, updated)) {
 
-		updated.mayInfo.hostNode = hostNode;
+		// updated.mayInfo.instance = instance;
+		// updated.mayInfo.hostNode = hostNode;
 		hostNode = updateStrategy[updated.mtype](prevRendered, updated);
 		//mtype === 1在这在设置instance会循环引用
-		updated.mtype === 2 && (updated.mayInfo.instance = instance);
+		// updated.mtype === 2 && ();
 		updated.mayInfo.vChildren = transformChildren(updated, hostNode);
 		instance.mayInst.forceUpdate = null;
-		instance.mayInst.hostNode = hostNode;
 		//原先这种diffProps 再diffChildren的方式并未考虑到 render返回之后还是
 		//组件怎么办，连续几个组件嵌套children都需要render怎么办 这些情况都是diffProps
 		//无法处理的，当时想的是一个组件diff diff之后再diff下一个组件；但如果组件之间发生交互的
@@ -155,14 +155,15 @@ export function reRender(instance) {
 		var isSVG = updated.mtype === 3;
 		var dom = mountStrategy[updated.mtype](updated, isSVG);
 		//component上的hostNode保持最新
-		var lastVnode = hostNode.parentNode._lastVnode;
-		lastVnode && (lastVnode.mayInfo.hostNode = dom);
+		// var lastVnode = hostNode.parentNode._lastVnode;
+		// lastVnode && (lastVnode.mayInfo.hostNode = dom);
 		hostNode.parentNode.replaceChild(dom, hostNode);
-		updated.mayInfo.hostNode = dom;
+		// updated.mayInfo.hostNode = dom;
 		hostNode = dom;
-		instance.mayInst.hostNode = hostNode;
+		instance.mayInst.hostNode = dom;
 		updated.mayInfo.vChildren = transformChildren(updated, hostNode);
 		instance.mayInst.forceUpdate = null;
+		disposeVnode(prevRendered);
 	}
 
 	if (instance.componentDidUpdate) {
@@ -188,7 +189,7 @@ function mayUpdate(prevVnode, newVnode, parent) {
 	} else {
 		var isSVG = newVnode.mtype === 3;
 		dom = mountStrategy[newVnode.mtype](newVnode, isSVG);
-		var hostNode = prevVnode.mayInfo.hostNode || null;
+		var hostNode = (prevVnode && prevVnode.mtype === 1) ? prevVnode.mayInfo.hostNode : prevVnode.mayInfo.instance.mayInst.hostNode;
 		if (!parent) {
 			parent = hostNode && hostNode.parentNode;
 		}
@@ -196,7 +197,8 @@ function mayUpdate(prevVnode, newVnode, parent) {
 		disposeVnode(prevVnode);
 		hostNode = null;
 	}
-	newVnode.mayInfo.hostNode = dom;
+	// newVnode.mtype === 2 && (newVnode.mayInfo.instance.mayInst.hostNode = dom);
+	// newVnode.mayInfo.hostNode = dom;
 	return dom;
 }
 
@@ -221,8 +223,14 @@ export function findDOMNode(ref) {
 		if (ref.nodeType === 1) {
 			return ref;
 		} else {
-			if (ref.mayInst.hostNode) {
-				ret = ref.mayInst.hostNode;
+			var c = ref.mayInst.rendered;
+			while (c) {
+				if (c.mtype === 1) {
+					return c.mayInfo.hostNode;
+				} else if (c.mayInfo.hostNode) {
+					return c.mayInfo.hostNode;
+				}
+				c = c.mayInfo.instance.mayInst.rendered;
 			}
 		}
 	}

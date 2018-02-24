@@ -1,6 +1,6 @@
 
 
-//文本节点重复利用 借(chao)鉴(xi) anu
+//文本节点重复利用
 export var recyclables={
     '#text':[]
 }

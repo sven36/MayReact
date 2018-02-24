@@ -986,7 +986,7 @@ describe('node模块', function () {
             }
         }
         var s = React.render(<App />, div);
-        expect(s.mayInst.hostNode ).toBe(s2.mayInst.hostNode);
+        expect(s.mayInst.hostNode ).toBe(s2.mayInst.rendered.mayInfo.hostNode);
         s2.setState({value: 0});//子组件改变后 父组件的ref跟着变动
         // expect(s.updater._hostNode ).toBe(s2.updater._hostNode);
         // expect(s.updater._hostNode.nodeName).toBe('STRONG');

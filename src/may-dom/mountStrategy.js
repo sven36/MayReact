@@ -82,7 +82,7 @@ function mountDOM(vnode, isSVG) {
                 if (c.type) {
                     c.context = getContextByTypes(vnode.context, c.type.contextTypes);
                     cdom = mountStrategy[c.mtype](c, isSVG);
-                    c.mayInfo.hostNode = cdom;
+                    c.mtype === 2 && (c.mayInfo.instance.mayInst.hostNode = cdom);
                     hostNode.appendChild(cdom);
                 } else { //有可能是子数组iterator
                     var iteratorFn = getIteractor(c);
@@ -131,22 +131,16 @@ function mountComposite(vnode, isSVG) {
             //svg的子节点namespace也是svg
             isSVG = rendered.mtype === 3;
         }
-        //用于子组件改变同步父组件的hostNode
-        // vnode.mayInfo.instance && (rendered.mayInfo.parentInstance = vnode.mayInfo.instance)
         //递归遍历 深度优先
         hostNode = mountStrategy[rendered.mtype](rendered, isSVG);
         //dom diff需要分类一下children以方便diff
         rendered.mayInfo.vChildren = transformChildren(rendered, hostNode);
-        rendered.mayInfo.hostNode = hostNode;
-        vnode.mayInfo.hostNode = hostNode;
-        inst.mayInst.hostNode = hostNode;
+        // rendered.mayInfo.hostNode = hostNode;
     } else { //render 返回null
         hostNode = document.createComment('empty');
         vnode.mayInfo.hostNode = hostNode;
-        vnode.mayInfo.isEmpty = true;
         //用于isMounted 判断 即使是null
         inst.mayInst.isEmpty = true;
-        inst.mayInst.hostNode = hostNode;
     }
     if (inst.componentDidMount) {
         lifeCycleQueue.push(inst.componentDidMount.bind(inst));

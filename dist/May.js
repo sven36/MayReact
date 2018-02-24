@@ -12,7 +12,10 @@ function createElement(type, config, children) {
     var key = null;
     var ref = null;
     var mtype = null;
+    var getContext = null;
     var len = arguments.length - 2;
+    //0代表没有ref 1代表ref为func 2为string
+    var refType = 0;
     //既然render的时候都需要判断下type 是fun或string
     //那把这一步提前 比render循环里判断更好些;
     var _type = typeof type;
@@ -20,8 +23,10 @@ function createElement(type, config, children) {
         case 'string': //HtmlElement 1  SVG 3
             mtype = type !== 'svg' ? 1 : 3;
             break;
-        case 'function': //component 或functionless
+        case 'function': //component 或statelessComponent
             mtype = 2;
+            //如果有contextTypes代表该组件可以取context
+            type.contextTypes && (getContext = true);
             break;
     }
     if (config) {
@@ -29,6 +34,17 @@ function createElement(type, config, children) {
         ref = config.ref || null;
         if (typeof ref === 'number') {
             ref = '' + ref;
+        }
+        if (ref) {
+            var _refType = typeof ref;
+            switch (_refType) {
+                case 'function':
+                    refType = 1;
+                    break;
+                case 'string':
+                    refType = 2;
+                    break;
+            }
         }
         for (var i in config) {
             if (i !== 'key' && i != 'ref') {
@@ -57,11 +73,11 @@ function createElement(type, config, children) {
             }
         }
         props.children = array;
-    } else if (len === 1) { // && children
+    } else if (len === 1) {
         props.children = children;
     }
 
-    return new Vnode(type, key, ref, props, mtype);
+    return new Vnode(type, key, ref, props, mtype, getContext, refType);
 }
 
 /**
@@ -74,7 +90,7 @@ function createElement(type, config, children) {
  * @param {*} owner 
  * @param {*} props 
  */
-var Vnode = function (type, key, ref, props, mtype) {
+var Vnode = function (type, key, ref, props, mtype, getContext, refType) {
     this.type = type;
     this.key = key;
     this.ref = ref;
@@ -84,17 +100,91 @@ var Vnode = function (type, key, ref, props, mtype) {
     //之前是直接赋在vnode上 多了之后容易混 
     //单独新建个对象存放各种信息
     this.mayInfo = {};
+    this.getContext = getContext;
+    this.refType = refType;
+};
+
+
+// function isArray(o) {
+//     return Object.prototype.toString.call(o) == '[object Array]';
+// }
+
+//文本节点重复利用
+var recyclables={
+    '#text':[]
+};
+function mergeState(instance) {
+    var newState;
+    var prevState = instance.state;
+    if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
+        var queue = instance.mayInst.mergeStateQueue;
+        var newState = extend({}, prevState);
+        for (var i = 0; i < queue.length; i++) {
+            var s = queue[i];
+            if (s && s.call) {
+                s = s.call(instance, newState, instance.nextProps || instance.props);
+            }
+            newState = extend(newState, s);
+        }
+        instance.mayInst.mergeStateQueue.length = 0;
+    } else {
+        newState = prevState;
+    }
+    return newState;
+}
+
+
+// export function eventProxy(e) {
+//     return this._listener[e.type](e);
+// }
+function extend(target, src) {
+    for (var key in src) {
+        if (src.hasOwnProperty(key)) {
+            target[key] = src[key];
+        }
+    }
+    return target;
+}
+/**
+ * 寄生组合式继承
+ * @param {*} target 
+ * @param {*} superClass 
+ */
+function inherits(target, superClass) {
+    function b() { }
+    b.prototype = superClass.prototype;
+    var fn = target.prototype = new b();
+    fn.constructor = target;
+    return fn;
+}
+
+var Refs = {
+    //当子component含有ref的时候,需要把对应的instance或dom添加到 父component的refs属性中
+    //如果在mountComponent中做这样的操作需要每一层都要添加owner 放在外面更好些;
+    currentOwner: null,
+    //开始render时isRoot为true,方便ref定位最顶端节点
+    isRoot: false,
+    attachRef: function (vnode, hostNode) {
+        if (vnode.refType === 1) { //func
+            hostNode.mayInst && hostNode.mayInst.stateless && (hostNode = null);
+            lifeCycleQueue.push(vnode.ref.bind(vnode, hostNode));
+        } else if (vnode.refType === 2) { //string
+            this.currentOwner.refs[vnode.ref] = hostNode;
+        }
+    }
 };
 
 //mayQueue 保存render过程中的各种事件队列 
 var mayQueue = {
-    dirtyComponentsQueue: [], //setState 需要diff的component队列
+    dirtyComponentsQueue: [], //setState 需要diff的component队列 
     callbackQueue: [], //回调队列 setState 中的事件回调
     lifeCycleQueue: [], //生命周期过程中的回调队列 DidUpdate DidMount ref回调
     isInEvent: false, //是否在触发事件 回调事件中的setstate合并触发
     clearQueue: clearQueue,
     flushUpdates: flushUpdates,
 };
+//存放生命周期中的 DidMount DidUpdate以及ref回调
+var lifeCycleQueue = mayQueue.lifeCycleQueue;
 /**
  * 清空回调队列
  * @param {*} mayQueue 
@@ -102,6 +192,7 @@ var mayQueue = {
 function clearQueue() {
     //ComponentDidMount
     clearLifeCycleQueue();
+
     //如有有dirty Component diff
     flushUpdates();
     //setState传入的回调函数
@@ -109,35 +200,40 @@ function clearQueue() {
 }
 
 function flushUpdates() {
-    var c;
+    var instance;
+    var i = 0;
     //如果在当前生命周期的DidMount调用setState 放到下一生命周期处理
     mayQueue.dirtyComponentsQueue = mayQueue.dirtyComponentsQueue.sort(sortComponent);
-    while (c = mayQueue.dirtyComponentsQueue.shift()) {
-        if (c.mayInst.dirty) {
+    while (instance = mayQueue.dirtyComponentsQueue.shift()) {
+        if (i++ === 0) {
+            Refs.isRoot = true;
+        }
+        if (instance.mayInst.dirty) {
             //如果C是脏组件diff 如果其在diff过程中子组件也需要diff diff之后
             //子组件_dirty会为false 没必要再diff一次；
-            reRender(c);
-
-
+            reRender(instance);
         }
-        if (c) {
+
+        if (instance) {
             //diff之后组件的状态返回0
-            c.mayInst.lifeState = 0;
+            instance.mayInst.lifeState = 0;
         }
     }
     //ComponentDidUpdate
     clearLifeCycleQueue();
+    //防止setState currentOwner混乱
+    Refs.currentOwner = null;
 }
 
 function clearLifeCycleQueue() {
     //先清空 生命周期 ref 的回调函数
     if (mayQueue.lifeCycleQueue && mayQueue.lifeCycleQueue.length > 0) {
-        var lifeCallback;
-        // mayQueue.lifeCycleQueue = mayQueue.lifeCycleQueue.sort(sortComponent);
-        while (lifeCallback = mayQueue.lifeCycleQueue.shift()) {
-            lifeCallback();
-            //componentDidMount 之后其lifeState为0
-            lifeCallback.instance && (lifeCallback.instance.mayInst.lifeState = 0);
+        var callback;
+        //其实ref很像生命周期函数,它比较特殊的地方在于vnode.type='div'之类的vnode
+        //其string ref要指向其真实dom func ref也是回调真实的dom 其它的都是回调instance
+        //vnode.type='div'之类的ref特殊处理;剩余的就和生命周期很像了;
+        while (callback = mayQueue.lifeCycleQueue.shift()) {
+            callback();
         }
     }
 }
@@ -159,51 +255,6 @@ function sortCallback(a, b) {
 
 function sortComponent(a, b) {
     return a.mayInst.mountOrder - b.mayInst.mountOrder;
-}
-
-function mergeState(instance) {
-    var newState;
-    var prevState = instance.state;
-    if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
-        var queue = instance.mayInst.mergeStateQueue;
-        var newState = extend$1({}, prevState);
-        for (var i = 0; i < queue.length; i++) {
-            var s = queue[i];
-            if (s && s.call) {
-                s = s.call(instance, newState, instance.nextProps || instance.props);
-            }
-            newState = extend$1(newState, s);
-        }
-        instance.mayInst.mergeStateQueue.length = 0;
-    } else {
-        newState = prevState;
-    }
-    return newState;
-}
-
-
-// export function eventProxy(e) {
-//     return this._listener[e.type](e);
-// }
-function extend$1(target, src) {
-    for (var key in src) {
-        if (src.hasOwnProperty(key)) {
-            target[key] = src[key];
-        }
-    }
-    return target;
-}
-/**
- * 寄生组合式继承
- * @param {*} target 
- * @param {*} superClass 
- */
-function inherits(target, superClass) {
-    function b() {}
-    b.prototype = superClass.prototype;
-    var fn = target.prototype = new b();
-    fn.constructor = target;
-    return fn;
 }
 
 var globalEvent = {
@@ -330,8 +381,8 @@ function createHandle(name, fn) {
     };
 }
 if (isTouch) {
-    eventHooks.click = noop$1;
-    eventHooks.clickcapture = noop$1;
+    eventHooks.click = noop;
+    eventHooks.clickcapture = noop;
 }
 
 var changeHandle = createHandle("change");
@@ -363,7 +414,7 @@ var eventProto = (SyntheticEvent.prototype = {
             e.stopPropagation();
         }
     },
-    persist: noop$1,
+    persist: noop,
     stopImmediatePropagation: function () {
         this.stopPropagation();
         this.stopImmediate = true;
@@ -382,7 +433,7 @@ function isFn(obj) {
     return Object.prototype.toString.call(obj) === "[object Function]";
 }
 
-function noop$1() { }
+function noop() { }
 
 /* IE6-11 chrome mousewheel wheelDetla 下 -120 上 120
             firefox DOMMouseScroll detail 下3 上-3
@@ -491,12 +542,6 @@ function getLowestCommonAncestor(instA, instB) {
     return null;
 }
 
-var Refs = {
-    //当子component含有ref的时候,需要把对应的instance或dom添加到 父component的refs属性中
-    //如果在mountComponent中做这样的操作需要每一层都要添加owner 放在外面更好些;
-    currentOwner: null,
-};
-
 //之前是 mount的时候setDomAttr一个方法 diff的时候diffProps一个方法
 //后来发现 写着写着要修改点setDomAttr的内容 diff的时候还要在判断一遍
 //那干脆把这两个合成一个方法好了
@@ -524,33 +569,7 @@ function diffProps(prev, now) {
                 removeDomAttr(hostNode, prevProps, prop);
             }
         }
-        var _ref = prev.ref;
-        var ref = now && now.ref;
-        if (_ref) {
-            if (typeof _ref === 'function') {
-                prev.ref(null);
-                prev.ref = null;
-            } else {
-                if (Refs.currentOwner && Refs.currentOwner.refs[_ref]) {
-                    Refs.currentOwner.refs[_ref] = null;
-                }
-            }
-        }
-        if (ref) {
-            if (typeof ref === 'function') {
-                mayQueue.lifeCycleQueue.push(now.ref.bind(now, now));
-            }
-            if (typeof ref === 'string') {
-                if (Refs.currentOwner) {
-                    if (Refs.currentOwner.refs) {
-                        Refs.currentOwner.refs[ref] = hostNode;
-                    } else {
-                        Refs.currentOwner.refs = {};
-                        Refs.currentOwner.refs[ref] = hostNode;
-                    }
-                }
-            }
-        }
+
         if (prevStyle !== nowStyle) {
             patchStyle(hostNode, prevStyle, nowStyle);
         }
@@ -843,11 +862,829 @@ const cssSuffix = {
     lineHeight: 'px'
 };
 
-//存放生命周期中的 DidMount DidUpdate以及ref回调
-var lifeCycleQueue = mayQueue.lifeCycleQueue;
 var NAMESPACE = {
-	svg: 'http://www.w3.org/2000/svg'
+    html: 'http://www.w3.org/1999/xhtml',
+    mathml: 'http://www.w3.org/1998/Math/MathML',
+    svg: 'http://www.w3.org/2000/svg'
 };
+
+/**
+ * 如果instance具备getChildContext方法 则调用
+ * @param {component实例} instance 
+ * @param {当前上下文} context 
+ */
+function getChildContext(instance, context) {
+    var prevProps = instance.props;
+    if (instance.nextProps) {
+        instance.props = instance.nextProps;
+    }
+    var getContext = instance.getChildContext();
+    if (instance.nextProps) {
+        instance.props = prevProps;
+    }
+    if (getContext && typeof getContext === 'object') {
+        if (!context) {
+            context = {};
+        }
+        context = Object.assign(context, getContext);
+    }
+    return context;
+}
+function getContextByTypes(context, typeCheck) {
+    var ret = {};
+    if (!context || !typeCheck) {
+        return ret;
+    }
+    for (const key in typeCheck) {
+        if (context.hasOwnProperty(key)) {
+            ret[key] = context[key];
+        }
+    }
+    return ret;
+}
+
+var REAL_SYMBOL = typeof Symbol === "function" && Symbol.iterator;
+var FAKE_SYMBOL = "@@iterator";
+
+function getIteractor(a) {
+    var iteratorFn = REAL_SYMBOL && a[REAL_SYMBOL] || a[FAKE_SYMBOL];
+    if (iteratorFn && iteratorFn.call) {
+        return iteratorFn;
+    }
+}
+
+function callIteractor$1(iteratorFn, children) {
+    var iterator = iteratorFn.call(children),
+        step,
+        ret = [];
+    if (iteratorFn !== children.entries) {
+        while (!(step = iterator.next()).done) {
+            ret.push(step.value);
+        }
+    } else {
+        //Map, Set
+        while (!(step = iterator.next()).done) {
+            var entry = step.value;
+            if (entry) {
+                ret.push(entry[1]);
+            }
+        }
+    }
+    return ret;
+}
+
+//https://segmentfault.com/a/1190000010336457  司徒正美先生写的分析
+//hydrate是最早出现于inferno(另一个著名的react-like框架)，并相邻的简单数据类型合并成一个字符串。
+//因为在react的虚拟DOM体系中，字符串相当于一个文本节点。减少children中的个数，
+//就相当减少实际生成的文本节点的数量，也减少了以后diff的数量，能有效提高性能。
+
+//render过程中有Key的 是最有可能变动的，无Key的很可能不会变（绝大部分情况）
+//把children带Key的放一起  不带Key的放一起（因为他们很可能不变化，顺序也不变减少diff寻找）
+function transformChildren(renderedVnode, parent) {
+    var children = renderedVnode.props.children || null;
+    if (children && !Array.isArray(children)) {
+        children = [children];
+    }
+    var len = children ? children.length : 0;
+    var childList = [].slice.call(parent.childNodes);
+    var result = children ? {} : null;
+    //如有undefined null 简单数据类型合并 noCount++;
+    var noCount = 0;
+    for (var i = 0; i < len; i++) {
+        var c = children[i];
+        var __type = typeof c;
+        switch (__type) {
+            case 'object':
+                if (c.type) {
+                    if (c.mayInfo.reused) {
+                        //如果该组件 diff 两次 第一次vnode重用之后_reused为true
+                        //生成vchildren时需要其为false 否则第二次diff
+                        c.mayInfo.reused = false;
+                    }
+                    var _key = genKey(c);
+                    if (!result[_key]) {
+                        result[_key] = [c];
+                    } else {
+                        result[_key].push(c);
+                    }
+                    if (c.ref) { //如果子dom有ref 标识一下 
+                        var owner = renderedVnode.mayInfo.refOwner;
+                        if (owner) {
+                            if (owner.refs) {
+                                owner.refs[c.ref] = c.mayInfo.instance || c.mayInfo.hostNode || null;
+                            } else {
+                                owner.refs = {};
+                                owner.refs[c.ref] = c.mayInfo.instance || c.mayInfo.hostNode || null;
+                            }
+                        }
+                    }
+                } else {
+                    var iteratorFn = getIteractor(c);
+                    if (iteratorFn) {
+                        var ret = callIteractor$1(iteratorFn, c);
+                        for (var _i = 0; _i < ret.length; _i++) {
+                            var _key = genKey(ret[_i]);
+                            if (!result[_key]) {
+                                result[_key] = [ret[_i]];
+                            } else {
+                                result[_key].push(ret[_i]);
+                            }
+                        }
+                    }
+                }
+
+                break;
+            case 'number':
+            case 'string':
+                //相邻的简单数据类型合并成一个字符串
+                var tran = {
+                    type: '#text',
+                    mtype: 4,
+                    value: c,
+                    mayInfo: {}
+                };
+                if (childList[i - noCount]) {
+                    tran.mayInfo.hostNode = childList[i - noCount];
+                }
+                if ((i + 1 < len)) {
+                    var _ntype = typeof children[i + 1 - noCount];
+                    if (_ntype === 'string' || _ntype === 'number') {
+                        tran.value += children[i + 1 - noCount];
+                        noCount++;
+                        i++;
+                    }
+                }
+                var _k = '#text';
+                if (!result[_k]) {
+                    result[_k] = [tran];
+                } else {
+                    result[_k].push(tran);
+                }
+                break;
+            default:
+                noCount++;
+                break;
+        }
+    }
+    return result;
+}
+function genKey(child) {
+    return !child.key ? (child.type.name || child.type) : ('_$' + child.key);
+}
+
+var mountOrder = 0;
+function buildComponentFromVnode(vnode) {
+    var props = vnode.props;
+    var key = vnode.key;
+    var ref = vnode.ref;
+    var context = vnode.context;
+    var inst, rendered;
+    var Ctor = vnode.type;
+    //Component  PureComponent
+    if (Ctor.prototype && Ctor.prototype.render) {
+        //props, context需要放在前俩
+        inst = new Ctor(props, context, key, ref);
+        //constructor里面props不可变
+        inst.props = props;
+        inst.refType = vnode.refType;
+        inst.mayInst.mountOrder = mountOrder;
+        mountOrder++;
+        //_lifeState来控制生命周期中调用setState的作用
+        //为0代表刚创建完component实例 (diff之后也会重置为0)
+        inst.mayInst.lifeState = 0;
+
+        if (inst.componentWillMount) {
+            //此时如果在componentWillMount调用setState合并state即可
+            //为1代表componentWillMount
+            inst.mayInst.lifeState = 1;
+            inst.componentWillMount();
+        }
+        if (inst.mayInst.mergeStateQueue) {
+            inst.state = mergeState(inst);
+        }
+        //为2代表开始render
+        //children 初次render的生命周期render DidMount
+        //调用父组件的setState 都放在父组件的下一周期;
+        inst.mayInst.lifeState = 2;
+        rendered = inst.render(props, context);
+        if (inst.getChildContext) {
+            context = getChildContext(inst, context);
+        }
+        if (vnode.getContext) {
+            inst.context = getContextByTypes(context, Ctor.contextTypes);
+        }
+        rendered && (rendered.mayInfo.refOwner = inst);
+    } else {
+        //StatelessComponent 我们赋给它一个inst 省去之后判断inst是否为空等;
+        inst = {
+            mayInst: {
+                stateless: true
+            },
+            render: function (type) {
+                return type(this.props, this.context);
+            }
+        };
+        rendered = inst.render.call(vnode, Ctor);
+        //should support module pattern components
+        if (rendered && rendered.render) {
+            console.warn('不推荐使用这种module-pattern component建议换成正常的Component形式,目前只支持render暂不支持其它生命周期方法');
+            rendered = rendered.render.call(vnode, props, context);
+        }
+    }
+    if (rendered) {
+        //需要向下传递context
+        rendered.context = context;
+    }
+    vnode.mayInfo.instance = inst;
+    inst.mayInst.rendered = rendered;
+    return rendered;
+}
+
+//React是根据type类型分成不同的Component各自具备各自的mount与update方法
+//我们这里简化成根据type类型调用不同的方法
+//mountDOM vnode.type为string直接createElement 然后render children即可
+//mountComposite vnode.type为function 需实例化component 再render children
+var mountStrategy = {
+    1: mountDOM, //dom
+    2: mountComposite, //component
+    3: mountDOM, //svg dom
+    4: mountText //text
+};
+
+function mountDOM(vnode, isSVG) {
+    var vtype = vnode.type;
+    vnode.mayInfo.isSVG = isSVG;
+    var hostNode = !isSVG ? document.createElement(vtype) : document.createElementNS(NAMESPACE.svg, vnode.type);
+    if (Refs.isRoot) {
+        Refs.currentOwner = hostNode;
+        hostNode.refs = {};
+        Refs.isRoot = false;
+    }
+    vnode.mayInfo.hostNode = hostNode;
+    diffProps(null, vnode);
+
+    var children = vnode.props.children;
+    if (!Array.isArray(children)) {
+        children = [children];
+    }
+    var cdom, c;
+
+    var len = children.length;
+    for (let i = 0; i < len; i++) {
+        var c = children[i];
+        var type = typeof c;
+        switch (type) {
+            case 'number':
+            case 'string':
+                cdom = document.createTextNode(c);
+                if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
+                    cdom.nodeValue += children[i + 1];
+                    i++;
+                }
+                hostNode.appendChild(cdom);
+                break;
+            case 'object': //vnode
+                if (c.type) {
+                    c.context = getContextByTypes(vnode.context, c.type.contextTypes);
+                    cdom = mountStrategy[c.mtype](c, isSVG);
+                    c.mtype === 2 && (c.mayInfo.instance.mayInst.hostNode = cdom);
+                    hostNode.appendChild(cdom);
+                } else { //有可能是子数组iterator
+                    var iteratorFn = getIteractor(c);
+                    if (iteratorFn) {
+                        var ret = callIteractor$1(iteratorFn, c);
+                        for (var _i = 0; _i < ret.length; _i++) {
+                            cdom = mountStrategy[ret[_i].mtype](ret[_i], isSVG);
+                            ret[_i].mayInfo.hostNode = cdom;
+                            hostNode.appendChild(cdom);
+                        }
+                    }
+                }
+        }
+    }
+    vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
+
+    if (FormElement[vtype]) {
+        //如果是受控组件input select之类需要特殊处理下
+        if (vnode.props) {
+            var _val = vnode.props['value'] || vnode.props['defaultValue'] || '';
+            getIsControlled(hostNode, vnode);
+            hostNode._lastValue = _val;
+        }
+    }
+    //本来想放在调度模块的 但是这种vnode type为dom类型的 func是要在DidMount之前调用的
+    //因为DidMount中可能用到;
+    if (vnode.ref) {
+        Refs.attachRef(vnode, hostNode);
+    }
+    return hostNode;
+}
+
+
+
+function mountComposite(vnode, isSVG) {
+    var hostNode = null;
+    var rendered = buildComponentFromVnode(vnode);
+    var inst = vnode.mayInfo.instance;
+    if (!inst.mayInst.stateless && Refs.isRoot) {
+        Refs.currentOwner = inst;
+        inst.refs = {};
+        Refs.isRoot = false;
+    }
+    if (rendered) {
+        if (!isSVG) {
+            //svg的子节点namespace也是svg
+            isSVG = rendered.mtype === 3;
+        }
+        //递归遍历 深度优先
+        hostNode = mountStrategy[rendered.mtype](rendered, isSVG);
+        //dom diff需要分类一下children以方便diff
+        rendered.mayInfo.vChildren = transformChildren(rendered, hostNode);
+        // rendered.mayInfo.hostNode = hostNode;
+    } else { //render 返回null
+        hostNode = document.createComment('empty');
+        vnode.mayInfo.hostNode = hostNode;
+        //用于isMounted 判断 即使是null
+        inst.mayInst.isEmpty = true;
+    }
+    if (inst.componentDidMount) {
+        lifeCycleQueue.push(inst.componentDidMount.bind(inst));
+    } else {
+        //如果没有回调则其render生命周期结束lifeState为0
+        inst.mayInst.lifeState = 0;
+    }
+    if (vnode.ref) {
+        Refs.attachRef(vnode, inst);
+    }
+
+    return hostNode;
+}
+
+function mountText(vnode) {
+    if (vnode) {
+        var node = recyclables['#text'].pop();
+        if (node) {
+            node.nodeValue = node.value;
+            return node;
+        }
+        return document.createTextNode(vnode.value);
+    } else {
+        return document.createComment('empty');
+    }
+}
+
+function disposeVnode(vnode) {
+    if (!vnode) {
+        return;
+    }
+    if (vnode.refType === 1) {
+        vnode.ref(null);
+        vnode.ref = null;
+    }
+    if (vnode.mayInfo.instance) {
+        disposeComponent(vnode, vnode.mayInfo.instance);
+    } else if (vnode.mtype === 1) {
+        disposeDomVnode(vnode);
+    }
+    vnode.mayInfo = null;
+}
+function disposeDomVnode(vnode) {
+    var children = vnode.mayInfo.vChildren;
+    if (children) {
+        for (var c in children) {
+            children[c].forEach(function (child) {
+                disposeVnode(child);
+            });
+        }
+        vnode.mayInfo.vChildren = null;
+    }
+    if (vnode.mayInfo.refOwner) {
+        vnode.mayInfo.refOwner = null;
+    }
+    vnode.mayInfo = null;
+}
+
+function disposeComponent(vnode, instance) {
+    if (instance.setState) {
+        instance.setState = noop$1;
+        instance.forceUpdate = noop$1;
+    }
+    if (instance.componentWillUnmount) {
+        instance.componentWillUnmount();
+        instance.componentWillUnmount = noop$1;
+    }
+    if (instance.refs) {
+        instance.refs = null;
+    }
+    if (instance.mayInst.rendered) {
+        // vnode.mayInfo.rendered = null;
+        disposeVnode(instance.mayInst.rendered);
+    }
+    instance.mayInst.forceUpdate = instance.mayInst.dirty = vnode.mayInfo.instance = instance.mayInst = null;
+}
+var isStandard = 'textContent' in document;
+var fragment = document.createDocumentFragment();
+function disposeDom(dom) {
+    if (dom._listener) {
+        dom._listener = null;
+    }
+    if (dom.nodeType === 1) {
+        if (isStandard) {
+            dom.textContent = '';
+        } else {
+            emptyElement(dom);
+        }
+    } else if (dom.nodeType === 3) {
+        if (recyclables['#text'].length < 100) {
+            recyclables['#text'].push(dom);
+        }
+    }
+    fragment.appendChild(dom);
+    fragment.removeChild(dom);
+}
+function emptyElement(dom) {
+    var c;
+    while (c = dom.firstChild) {
+        emptyElement(c);
+        dom.removeChild(c);
+    }
+}
+
+function noop$1() { }
+
+//diff根据vnode的不同类型调用不同的diff方法~
+//其实写着写着就发现还是类似React 根据不同的类型生成不同的Component
+//拥有对应的diff方法;
+var updateStrategy = {
+    1: updateDOM, //dom
+    2: updateComposite, //component
+    3: updateDOM, //svg dom
+    4: updateText //text
+};
+
+function updateDOM(prevVnode, newVnode) {
+    if (prevVnode.refType === 1) {
+        prevVnode.ref(null);
+    }
+    var hostNode = (prevVnode && prevVnode.mayInfo.hostNode) || null;
+    var vtype = newVnode.type;
+    if (!newVnode.mayInfo.hostNode) {
+        newVnode.mayInfo.hostNode = hostNode;
+    }
+    if (Refs.isRoot) {
+        Refs.currentOwner = hostNode;
+        hostNode.refs = {};
+        Refs.isRoot = false;
+    }
+    var isSVG = hostNode && hostNode.namespaceURI === NAMESPACE.svg;
+    if (isSVG) {
+        newVnode.mayInfo.isSVG = true;
+    }
+    diffProps(prevVnode, newVnode);
+    diffChildren(prevVnode, newVnode, hostNode);
+    newVnode.mayInfo.vChildren = transformChildren(newVnode, hostNode);
+    if (FormElement[vtype]) {
+        //如果是受控组件input select之类需要特殊处理下
+        if (newVnode.props) {
+            var isControlled = getIsControlled(hostNode, newVnode);
+            var _val, hasSelected;
+            if (isControlled) {
+                _val = newVnode.props['value'] || hostNode._lastValue || '';
+                switch (vtype) {
+                    case 'select':
+                        var _optionsChilds = [].slice.call(hostNode.childNodes);
+                        if (_optionsChilds) {
+                            for (var k = 0; k < _optionsChilds.length; k++) {
+                                var oChild = _optionsChilds[k];
+                                if (oChild.value === _val) {
+                                    oChild.selected = true;
+                                    hasSelected = true;
+                                } else {
+                                    oChild.selected = false;
+                                }
+                            }
+                            if (!hasSelected) { //如果给定value没有选中的  默认第一个
+                                hostNode.value = _optionsChilds[0].value;
+                            }
+                        }
+                        break;
+
+                }
+            } else {
+                //如果reRender时 dom去掉了value属性 则其变为非受控组件 value取上一次的值
+                hostNode.value = hostNode._lastValue || '';
+            }
+        }
+
+    }
+    if (newVnode.ref) {
+        Refs.attachRef(newVnode, hostNode);
+    }
+
+    return hostNode;
+}
+
+function updateComposite(prevVnode, newVnode) {
+    if (prevVnode.refType === 1) {
+        prevVnode.ref(null);
+    }
+    //如果newVnode没有定义contextTypes 在componentWillReceiveProps等生命周期方法中
+    //是不应该传入context的 那么用空的temporaryContext代替
+    var temporaryContext = {};
+    var context = newVnode.context || {};
+    if (newVnode.getContext) {
+        context = getContextByTypes(context, newVnode.type.contextTypes);
+        temporaryContext = context;
+    }
+    var instance = prevVnode.mayInfo.instance;
+    var prevRendered = instance.mayInst.rendered;
+    var hostNode = (prevRendered && prevRendered.mtype === 1) ? prevRendered.mayInfo.hostNode : instance.mayInst.hostNode;
+    //empty代表prevVnode为null
+    var isEmpty = instance.mayInst.isEmpty || (hostNode && hostNode.nodeType === 8);
+    var newDom, newRendered, prevState, prevProps;
+    var skip = false;
+    if (!instance.mayInst.stateless) {
+        //需要兼容componentWillReceiveProps直接this.state={///}的情况
+        //先保存下之前的state
+        prevState = instance.state;
+        prevProps = prevVnode.props;
+        //lifeState为3组件开始diff
+        //WillReceive WillUpdate render DidUpdate等周期setState放到下一周期;
+        instance.mayInst.lifeState = 3;
+        //用于mergeState如果setState传入一个function s.call(instance, newState, instance.nextProps || instance.props);
+        //其参数应当是newState nextProps
+        instance.nextProps = newVnode.props;
+        if (instance.getChildContext) {
+            //getChildContext 有可能用到新的props
+            context = getChildContext(instance, context);
+
+        }
+        var newState = mergeState(instance);
+        //如果context与props都没有改变，那么就不会触发组件的receive，render，update等一系列钩子
+        //但还会继续向下比较
+        var needReceive = prevVnode !== newVnode || prevVnode.context !== context;
+        if (needReceive) {
+            if (instance.componentWillReceiveProps) {
+                //componentWillReceiveProps中调用了setState 合并state
+                instance.mayInst.lifeState = 1;
+                instance.componentWillReceiveProps(newVnode.props, temporaryContext);
+                if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
+                    newState = mergeState(instance);
+                } else { //this.state={///}的情况
+                    if (instance.state !== prevState) {
+                        newState = instance.state;
+                        instance.state = prevState;
+                    }
+                }
+            }
+            instance.mayInst.lifeState = 3;
+        } else {
+            var rendered = instance.mayInst.rendered;
+            //context穿透更新问题
+            rendered.context = newVnode.temporaryContext || context;
+            hostNode = updateStrategy[rendered.mtype](rendered, rendered);
+            return hostNode;
+        }
+
+        //shouldComponentUpdate 返回false 则不进行子组件渲染
+        if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(newVnode.props, newState, temporaryContext) === false) {
+            skip = true;
+        } else if (instance.componentWillUpdate) {
+            instance.componentWillUpdate(newVnode.props, newState, temporaryContext);
+        }
+        newVnode.mayInfo.instance = instance;
+        instance.props = newVnode.props;
+        if (skip) {
+            instance.state = newState;
+            instance.context = context;
+            instance.mayInst.dirty = false;
+            return hostNode;
+        }
+        instance.state = newState;
+        instance.context = context;
+        if (Refs.isRoot) {
+            Refs.currentOwner = instance;
+            Refs.currentOwner.refs = {};
+            Refs.isRoot = false;
+        }
+
+        newRendered = instance.render();
+        newRendered && (newRendered.context = context);
+        instance.mayInst.rendered = newRendered;
+        if (!isEmpty && newRendered) {
+            if (isSameType(prevRendered, newRendered)) {
+                hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
+                newRendered.mayInfo.hostNode = hostNode;
+            } else {
+                disposeVnode(prevRendered);
+                var isSVG = newRendered.mtype === 3;
+                newDom = mountStrategy[newRendered.mtype](newRendered, isSVG);
+                newRendered.mayInfo.hostNode = newDom;
+                hostNode.parentNode.replaceChild(newDom, hostNode);
+            }
+        } else {
+            if (isEmpty && newRendered) {
+                var isSVG = newRendered.mtype === 3;
+                newDom = mountStrategy[newRendered.mtype](newRendered, isSVG);
+                newRendered.mayInfo.hostNode = newDom;
+                if (hostNode.parentNode) {
+                    hostNode.parentNode.replaceChild(newDom, hostNode);
+                }
+            } else {
+                hostNode = document.createComment('empty');
+                instance.mayInst.hostNode = hostNode;
+                instance.mayInst.isEmpty = true;
+            }
+            //如果之前node为空 或 新render的为空 直接释放之前节点
+            disposeVnode(prevRendered);
+        }
+        if (!instance.mayInst.needNextRender) {
+            instance.mayInst.dirty = false;
+            instance.mayInst.needNextRender = false;
+        }
+        if (newDom) {
+            hostNode = newDom;
+        }
+        if (instance.componentDidUpdate) {
+            lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, prevProps, prevState, instance.context));
+        } else {
+            //如果没有回调则其render生命周期结束lifeState为0
+            instance.mayInst.lifeState = 0;
+        }
+        if (newVnode.refType === 1) {
+            Refs.attachRef(newVnode, instance);
+        }
+
+    } else { //stateless component
+        var newRendered = newVnode.type.call(newVnode, newVnode.props, newVnode.context);
+        newRendered.context = newVnode.context;
+        if (prevRendered && isSameType(prevRendered, newRendered)) {
+            hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
+            newRendered.mayInfo.hostNode = hostNode;
+
+        } else if (newVnode) {
+            disposeVnode(prevRendered);
+            var isSVG = newVnode.mtype === 3;
+            newDom = mountStrategy[newVnode.mtype](newVnode, isSVG);
+            newVnode.mayInfo.hostNode = newDom;
+            hostNode.parentNode.replaceChild(newDom, hostNode);
+            hostNode = newDom;
+        }
+
+    }
+    return hostNode;
+}
+
+function updateText(prev, now) {
+    var hostNode = now.mayInfo.hostNode || null;
+    if (prev) { //child._prevVnode
+        if (hostNode.nodeValue !== now.value) {
+            hostNode.nodeValue = now.value;
+        }
+    } else {
+        hostNode = document.createTextNode(now.value);
+    }
+    return hostNode;
+}
+function diffChildren(prevVnode, updatedVnode, parent) {
+    var prevChildren = prevVnode.mayInfo.vChildren || null;
+    var newRenderedChild = updatedVnode.props.children;
+    if (newRenderedChild && !Array.isArray(newRenderedChild)) {
+        newRenderedChild = [newRenderedChild];
+    }
+    //diff之前 遍历prevchildren 与newChildren 如有相同key的只对其props diff
+    var _mountChildren = [];
+    var _unMountChildren = [];
+    var k, prevK, _prevK, _tran;
+    if (newRenderedChild) {
+        var len = newRenderedChild.length;
+        for (var i = 0; i < len; i++) {
+            var c = newRenderedChild[i];
+            var t = typeof c;
+            switch (t) {
+                case 'object':
+                    k = genKey(c);
+                    //
+                    if (c.type && c.type.contextTypes) {
+                        c.context = getContextByTypes(updatedVnode.context, c.type.contextTypes);
+                    } else {
+                        c.context = {};
+                        //该组件没有定义contextTypes 无法使用context
+                        //我们还是需要保存一份context
+                        c.temporaryContext = updatedVnode.context;
+                    }
+                    break;
+                case 'boolean':
+                    k = "#text";
+                    _tran = {
+                        type: '#text',
+                        mtype: 4, //text
+                        value: '',
+                        mayInfo: {}
+                    };
+                    c = _tran;
+                    break;
+                case 'number':
+                case 'string':
+                    k = "#text";
+                    _tran = {
+                        type: '#text',
+                        mtype: 4, //text
+                        value: c,
+                        mayInfo: {}
+                    };
+                    c = _tran;
+                    //相邻简单数据类型合并
+                    if ((i + 1 < newRenderedChild.length)) {
+                        var _ntype = typeof newRenderedChild[i + 1];
+                        if (_ntype === 'string' || _ntype === 'number') {
+                            c.value += newRenderedChild[i + 1];
+                            i++;
+                        }
+                    }
+                    break;
+                case 'undefined':
+                    break;
+            }
+            prevK = prevChildren && prevChildren[k];
+            if (prevK && prevK.length > 0) { //试试=0 else
+                for (var _i = 0; _i < prevK.length; _i++) {
+                    var vnode = prevK[_i];
+                    if (c.type === vnode.type && !vnode.mayInfo.used) {
+                        vnode.mayInfo.hostNode && (c.mayInfo.hostNode = vnode.mayInfo.hostNode);
+                        c.mayInfo.instance = vnode.mayInfo.instance;
+                        c.mayInfo.prevVnode = vnode;
+                        vnode.mayInfo.used = true;
+                        c.mayInfo.reused = true;
+                        break;
+                    }
+                }
+            }
+            if (c) {
+                _mountChildren.push(c);
+            }
+        }
+    }
+    for (var name in prevChildren) {
+        var _c = prevChildren[name];
+        for (let j = 0; j < _c.length; j++) {
+            if (!_c[j].mayInfo.used) _unMountChildren.push(_c[j]);
+        }
+    }
+    flushMounts(_mountChildren, parent);
+    flushUnMounts(_unMountChildren);
+    _mountChildren.length = 0;
+}
+
+function flushMounts(newChildren, parent) {
+    for (var _i = 0; _i < newChildren.length; _i++) {
+        var child = newChildren[_i];
+        var _node = parent.childNodes[_i];
+        var newDom;
+        if (child.mayInfo.prevVnode) { //如果可以复用之前节点
+            var prevChild = child.mayInfo.prevVnode;
+            delete child.mayInfo.prevVnode;
+            newDom = updateStrategy[child.mtype](prevChild, child);
+            if (_node && _node !== newDom) { //移动dom
+                newDom = parent.removeChild(newDom);
+                parent.insertBefore(newDom, _node);
+            } else if (!_node) {
+                parent.appendChild(newDom);
+            }
+        } else { //新增节点
+            var isSVG = child.mtype === 3;
+            // var isSVG = vnode.namespaceURI === "http://www.w3.org/2000/svg";
+            newDom = mountStrategy[child.mtype](child, isSVG);
+            child.mtype === 2 && (child.mayInfo.instance.mayInst.hostNode = newDom);
+            // child.mayInfo.hostNode = newDom;
+            if (_node) {
+                parent.insertBefore(newDom, _node);
+            } else {
+                parent.appendChild(newDom);
+            }
+        }
+    }
+}
+
+function flushUnMounts(oldChildren) {
+    var c, dom;
+    while (c = oldChildren.shift()) {
+        if (c.mayInfo.hostNode) {
+            dom = c.mayInfo.hostNode;
+            c.mayInfo.hostNode = null;
+        } else if (c.mtype === 2) {
+            dom = c.mayInfo.instance.mayInst.hostNode;
+        }
+        disposeDom(dom);
+        disposeVnode(c);
+        c = null;
+    }
+}
+
+function isSameType(prev, now) {
+    return prev.type === now.type && prev.key === now.key;
+}
+
 function render(vnode, container, callback) {
 	return renderByMay(vnode, container, callback);
 }
@@ -861,6 +1698,7 @@ var renderByMay = function (vnode, container, callback) {
 	var renderedVnode, rootDom, result;
 	var lastVnode = container._lastVnode || null;
 	if (lastVnode) { //update
+		Refs.isRoot = true;
 		rootDom = mayUpdate(lastVnode, vnode, container);
 	} else {
 		if (vnode && vnode.type) {
@@ -868,6 +1706,7 @@ var renderByMay = function (vnode, container, callback) {
 			//因为如果按renderComponentChildren(renderedVnode, rootDom, _isSvg);传入container这种
 			//碰上component嵌套不好处理 参见 ReactChildReconciler-test的 warns for duplicated array keys with component stack info
 			var isSVG = vnode.mtype === 3;
+			Refs.isRoot = true;
 			rootDom = mountStrategy[vnode.mtype](vnode, isSVG);
 			if (rootDom && container && container.appendChild) {
 				container.appendChild(rootDom);
@@ -875,22 +1714,20 @@ var renderByMay = function (vnode, container, callback) {
 				throw new Error('container参数错误');
 			}
 		} else {
-			console.error('render参数错误');
-			return;
+			throw new Error('render参数错误');
 		}
 	}
-	result = vnode.mayInfo.instance || rootDom;
-	// if (!vnode.mayInfo.instance && rootDom) {
-	// 	result.refs = rootDom.refs;
-	// }
+	var instance = vnode.mayInfo.instance;
+	result = instance && !instance.mayInst.stateless && instance || rootDom;
 	//执行render过程中的回调函数lifeCycle ref等
 	mayQueue.clearQueue();
 	if (callback) { //render的 callback
 		callback();
 	}
-	if (vnode.mayInfo.instance) {
+	if (instance) {
 		//render之后lifeState也初始化为0；
-		vnode.mayInfo.instance.mayInst.lifeState = 0;
+		instance.mayInst.lifeState = 0;
+		instance.mayInst.hostNode = rootDom;
 		//当我开始着手解决 层层嵌套的component 最底层的那个setState触发的时候lifeState并不为0
 		//因为我不能确定其是否有componentDidMount的回调，它在这个回调setState是需要放到下一周期处理的
 		//一种办法是该instance如果具备componentDidMount我把其lifeState标个值如10 setState的时候判断
@@ -899,267 +1736,29 @@ var renderByMay = function (vnode, container, callback) {
 		//快写完了我才发现~惭愧~看来还是自己写写好，不如琢如磨，怎么对这流程了如指掌，不胸有成竹又如何找寻这
 		//最优方法
 	}
+	Refs.isRoot = false;
 	Refs.currentOwner = null;
 	container._lastVnode = vnode;
 	return result;
 };
 
-function mountDOM(vnode, isSVG) {
-	var vtype = vnode.type;
-	vnode.mayInfo.isSVG = isSVG;
-	var hostNode = !isSVG ? document.createElement(vtype) : document.createElementNS(NAMESPACE.svg, vnode.type);
-	if (!Refs.currentOwner) {
-		Refs.currentOwner = hostNode;
-		hostNode.refs = {};
-	}
-	vnode.mayInfo.hostNode = hostNode;
-	diffProps(null, vnode);
-
-	var children = vnode.props.children || null;
-	if (children && !Array.isArray(children)) {
-		children = [children];
-	}
-	var cdom, c;
-
-	if (children) {
-		var len = children.length;
-		for (let i = 0; i < len; i++) {
-			var c = children[i];
-			var type = typeof c;
-			switch (type) {
-				case 'number':
-				case 'string':
-					cdom = document.createTextNode(c);
-					if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
-						cdom.nodeValue += children[i + 1];
-						i++;
-					}
-					hostNode.appendChild(cdom);
-					break;
-				case 'object': //vnode
-					if (c.type) {
-						c.context = getContextByTypes(vnode.context, c.type.contextTypes);
-						cdom = mountStrategy[c.mtype](c, isSVG);
-						c.mayInfo.hostNode = cdom;
-						hostNode.appendChild(cdom);
-					} else { //有可能是子数组iterator
-						var iteratorFn = getIteractor(c);
-						if (iteratorFn) {
-							var ret = callIteractor$1(iteratorFn, c);
-							for (var _i = 0; _i < ret.length; _i++) {
-								cdom = mountStrategy[ret[_i].mtype](ret[_i], isSVG);
-								ret[_i].mayInfo.hostNode = cdom;
-								hostNode.appendChild(cdom);
-							}
-						}
-					}
-			}
-		}
-		vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
-	}
-
-	if (FormElement[vtype]) {
-		//如果是受控组件input select之类需要特殊处理下
-		if (vnode.props) {
-			var _val = vnode.props['value'] || vnode.props['defaultValue'] || '';
-			getIsControlled(hostNode, vnode);
-			hostNode._lastValue = _val;
-		}
-	}
-	if (vnode.ref) {
-		var ref = vnode.ref;
-		var owner = Refs.currentOwner;
-		var refInst = vnode.mayInfo.instance || vnode.mayInfo.hostNode || null;
-		if (typeof ref === 'function') {
-			lifeCycleQueue.push(ref.bind(owner, refInst));
-		} else if (typeof ref === 'string') { //ref 为string
-			owner.refs[ref] = refInst;
-		}
-	}
-	return hostNode;
-}
-
-
-
-function mountComposite(vnode, isSVG) {
-	var hostNode = null;
-	var rendered = buildComponentFromVnode(vnode);
-	if (!Refs.currentOwner && vnode.mayInfo.instance) { //!Refs.currentOwner && 
-		Refs.currentOwner = vnode.mayInfo.instance;
-		vnode.mayInfo.instance.refs = {};
-	}
-	var inst = vnode.mayInfo.instance || null;
-	if (rendered) {
-		if (!isSVG) {
-			//svg的子节点namespace也是svg
-			isSVG = rendered.mtype === 3;
-		}
-
-		//用于子组件改变同步父组件的hostNode
-		// vnode.mayInfo.instance && (rendered.mayInfo.parentInstance = vnode.mayInfo.instance)
-		//递归遍历 深度优先
-		hostNode = mountStrategy[rendered.mtype](rendered, isSVG);
-		//dom diff需要分类一下children以方便diff
-		rendered.mayInfo.vChildren = transformChildren(rendered, hostNode);
-		rendered.mayInfo.hostNode = hostNode;
-		vnode.mayInfo.hostNode = hostNode;
-		inst && (inst.mayInst.hostNode = hostNode);
-	} else { //render 返回null
-		hostNode = document.createComment('empty');
-		vnode.mayInfo.hostNode = hostNode;
-		vnode.mayInfo.isEmpty = true;
-		if (inst) { //用于isMounted 判断 即使是null
-			inst.mayInst.isEmpty = true;
-			inst.mayInst.hostNode = hostNode;
-		}
-	}
-	if (inst && inst.componentDidMount) {
-		var cb = inst.componentDidMount.bind(inst);
-		cb.instance = inst;
-		lifeCycleQueue.push(cb);
-	} else {
-		//如果没有回调则其render生命周期结束lifeState为0
-		inst && (inst.mayInst.lifeState = 0);
-	}
-	if (vnode.ref) {
-		var ref = vnode.ref;
-		var owner = Refs.currentOwner;
-		var refInst = inst || vnode.mayInfo.hostNode || null;
-		if (typeof ref === 'function') {
-			lifeCycleQueue.push(ref.bind(owner, vnode.mayInfo.stateless ? null : refInst));
-		} else if (typeof ref === 'string') { //ref 为string
-			owner.refs[ref] = refInst;
-		}
-	}
-	return hostNode;
-}
-
-function mountText(vnode) {
-	if (vnode) {
-		return document.createTextNode(vnode.value);
-	} else {
-		return document.createComment('empty');
-	}
-}
-
-//React是根据type类型分成不同的Component各自具备各自的mount与update方法
-//我们这里简化成根据type类型调用不同的方法
-//mountDOM vnode.type为string直接createElement 然后render children即可
-//mountComposite vnode.type为function 需实例化component 再render children
-var mountStrategy = {
-	1: mountDOM, //dom
-	2: mountComposite, //component
-	3: mountDOM, //svg dom
-	4: mountText //text
-};
-//diff根据vnode的不同类型调用不同的diff方法~
-//其实写着写着就发现还是类似React 根据不同的类型生成不同的Component
-//拥有对应的diff方法;
-var updateStrategy = {
-	1: updateDOM, //dom
-	2: updateComposite, //component
-	3: updateDOM, //svg dom
-	4: updateText //text
-};
-
-var mountOrder = 0;
-
-function buildComponentFromVnode(vnode) {
-	var props = vnode.props;
-	var key = vnode.key;
-	var ref = vnode.ref;
-	var context = vnode.context;
-	var inst, renderedVnode;
-	var Ctor = vnode.type;
-	//Component  PureComponent
-	if (Ctor.prototype && Ctor.prototype.render) {
-		//props, context需要放在前俩
-		inst = new Ctor(props, context, key, ref);
-		//constructor里面props不可变
-		inst.props = props;
-		if (!inst.mayInst) {
-			//新建个对象存放各种信息
-			inst.mayInst = {};
-		}
-		inst.mayInst.mountOrder = mountOrder;
-		mountOrder++;
-		//_lifeState来控制生命周期中调用setState的作用
-		//为0代表刚创建完component实例 (diff之后也会重置为0)
-		inst.mayInst.lifeState = 0;
-
-		if (inst.componentWillMount) {
-			//此时如果在componentWillMount调用setState合并state即可
-			//为1代表componentWillMount
-			inst.mayInst.lifeState = 1;
-			inst.componentWillMount();
-		}
-		if (inst.mayInst.mergeStateQueue) {
-			inst.state = mergeState(inst);
-		}
-		//为2代表开始render
-		//children 初次render的生命周期willMount DidMount
-		//调用父组件的setState 都放在父组件的下一周期;
-		inst.mayInst.lifeState = 2;
-		renderedVnode = inst.render(props, context);
-		if (inst.getChildContext) {
-			context = getChildContext(inst, context);
-		}
-		if (context) {
-			inst.context = getContextByTypes(context, Ctor.contextTypes);
-			renderedVnode && (renderedVnode.context = context);
-		}
-		// vnode.type === 'function' 代表其为Component Component中才能setState
-		//setState会触发reRender 故保存有助于domDiff的参数
-		vnode.mayInfo.instance = inst;
-		inst.mayInst.rendered = renderedVnode;
-		//设定owner 用于ref绑定
-		renderedVnode && (renderedVnode.mayInfo.refOwner = inst);
-	} else { //Stateless Function 函数式组件无需要生命周期方法 所以无需 继承 不需要= new Ctor(props, context);
-		renderedVnode = Ctor.call(vnode, props, context);
-		vnode.mayInfo.stateless = true;
-		//should support module pattern components
-		if (renderedVnode && renderedVnode.render) {
-			console.warn('不推荐使用这种module-pattern component建议换成正常的Component形式,目前只支持render暂不支持其它生命周期方法');
-			renderedVnode = renderedVnode.render.call(vnode, props, context);
-		}
-		//Stateless Component也需要向下传递context
-		renderedVnode && (renderedVnode.context = context);
-	}
-	//添加一个指针用于删除DOM时释放其component 对象,事件,ref等占用的内存
-	vnode.mayInfo.rendered = renderedVnode;
-	return renderedVnode;
-}
-
-function getContextByTypes(context, typeCheck) {
-	var ret = {};
-	if (!context || !typeCheck) {
-		return ret;
-	}
-	for (const key in typeCheck) {
-		if (context.hasOwnProperty(key)) {
-			ret[key] = context[key];
-		}
-	}
-	return ret;
-}
-
 function reRender(instance) {
-	var props = instance.props;
+	var prevProps = instance.props;
 	var context = instance.context;
 	var prevState = instance.state;
 	var prevRendered = instance.mayInst.rendered;
-	var isEmpty = !prevRendered;
-	var hostNode = !isEmpty && prevRendered.mayInfo.hostNode;
+	var isEmpty = instance.mayInst.isEmpty;
+	var hostNode = instance.mayInst.hostNode;
 	var skip = false;
 	//lifeState为3组件开始diff
 	//WillReceive WillUpdate render DidUpdate等周期setState放到下一周期;
 	instance.mayInst.lifeState = 3;
 	var newState = mergeState(instance);
 	//forceUpdate时 忽略shouldComponentUpdate
-	if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(props, newState, context) === false) {
+	if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(prevProps, newState, context) === false) {
 		skip = true;
 	} else if (instance.componentWillUpdate) {
-		instance.componentWillUpdate(props, newState, context);
+		instance.componentWillUpdate(prevProps, newState, context);
 	}
 	instance.state = newState;
 	//getChildContext有可能setState 所以需要newState再调用
@@ -1168,10 +1767,13 @@ function reRender(instance) {
 	}
 	if (skip) {
 		instance.mayInst.dirty = false;
-		instance.mayInst.hostNode = hostNode;
 		return hostNode;
 	}
-	var updated = instance.render(props, context);
+	if (Refs.isRoot) {
+		Refs.currentOwner = instance;
+		Refs.isRoot = false;
+	}
+	var updated = instance.render(prevProps, context);
 	instance.mayInst.rendered = updated;
 	updated && (updated.context = context);
 	if (!updated) {
@@ -1180,10 +1782,13 @@ function reRender(instance) {
 	}
 	if (!isEmpty && isSameType(prevRendered, updated)) {
 
-		updated.mayInfo.hostNode = hostNode;
+		// updated.mayInfo.instance = instance;
+		// updated.mayInfo.hostNode = hostNode;
 		hostNode = updateStrategy[updated.mtype](prevRendered, updated);
-		updated.mayInfo.instance = instance;
-
+		//mtype === 1在这在设置instance会循环引用
+		// updated.mtype === 2 && ();
+		updated.mayInfo.vChildren = transformChildren(updated, hostNode);
+		instance.mayInst.forceUpdate = null;
 		//原先这种diffProps 再diffChildren的方式并未考虑到 render返回之后还是
 		//组件怎么办，连续几个组件嵌套children都需要render怎么办 这些情况都是diffProps
 		//无法处理的，当时想的是一个组件diff diff之后再diff下一个组件；但如果组件之间发生交互的
@@ -1194,27 +1799,24 @@ function reRender(instance) {
 		//should provide up to date values for props
 		// diffProps(prevRenderedVnode, updatedVnode);
 	} else {
-		if (!Refs.currentOwner) {
-			Refs.currentOwner = instance;
-		}
+
 		var isSVG = updated.mtype === 3;
 		var dom = mountStrategy[updated.mtype](updated, isSVG);
 		//component上的hostNode保持最新
-		var lastVnode = hostNode.parentNode._lastVnode;
-		lastVnode && (lastVnode.mayInfo.hostNode = dom);
+		// var lastVnode = hostNode.parentNode._lastVnode;
+		// lastVnode && (lastVnode.mayInfo.hostNode = dom);
 		hostNode.parentNode.replaceChild(dom, hostNode);
-		updated.mayInfo.hostNode = dom;
+		// updated.mayInfo.hostNode = dom;
 		hostNode = dom;
+		instance.mayInst.hostNode = dom;
+		updated.mayInfo.vChildren = transformChildren(updated, hostNode);
+		instance.mayInst.forceUpdate = null;
+		disposeVnode(prevRendered);
 	}
-	updated.mayInfo.vChildren = transformChildren(updated, hostNode);
-	instance.mayInst.forceUpdate = null;
-	instance.mayInst.hostNode = hostNode;
+
 	if (instance.componentDidUpdate) {
-		if (instance.mayInst.needNextRender) {
-			instance.componentDidUpdate(props, prevState, instance.context);
-		} else {
-			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, instance.props, instance.state, instance.context));
-		}
+		instance.componentDidUpdate(prevProps, prevState, instance.context);
+		// lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, prevProps, prevState, instance.context));
 	} else {
 		instance.mayInst.lifeState = 0;
 	}
@@ -1226,237 +1828,16 @@ function reRender(instance) {
 		instance.mayInst.needNextRender = false;
 	}
 
-	//防止setState currentOwner混乱
-	Refs.currentOwner = null;
-}
-
-function updateDOM(prevVnode, newVnode) {
-	var hostNode = (prevVnode && prevVnode.mayInfo.hostNode) || null;
-	var vtype = newVnode.type;
-	if (!newVnode.mayInfo.hostNode) {
-		newVnode.mayInfo.hostNode = hostNode;
-	}
-	var isSVG = hostNode && hostNode.namespaceURI === NAMESPACE.svg;
-	if (isSVG) {
-		newVnode.mayInfo.isSVG = true;
-	}
-	diffProps(prevVnode, newVnode);
-	diffChildren(prevVnode, newVnode, hostNode);
-	newVnode.mayInfo.vChildren = transformChildren(newVnode, hostNode);
-	if (FormElement[vtype]) {
-		//如果是受控组件input select之类需要特殊处理下
-		if (newVnode.props) {
-			var isControlled = getIsControlled(hostNode, newVnode);
-			var _val, hasSelected;
-			if (isControlled) {
-				_val = newVnode.props['value'] || hostNode._lastValue || '';
-				switch (vtype) {
-					case 'select':
-						var _optionsChilds = [].slice.call(hostNode.childNodes);
-						if (_optionsChilds) {
-							for (var k = 0; k < _optionsChilds.length; k++) {
-								var oChild = _optionsChilds[k];
-								if (oChild.value === _val) {
-									oChild.selected = true;
-									hasSelected = true;
-								} else {
-									oChild.selected = false;
-								}
-							}
-							if (!hasSelected) { //如果给定value没有选中的  默认第一个
-								hostNode.value = _optionsChilds[0].value;
-							}
-						}
-						break;
-
-				}
-			} else {
-				//如果reRender时 dom去掉了value属性 则其变为非受控组件 value取上一次的值
-				hostNode.value = hostNode._lastValue || '';
-			}
-		}
-
-	}
-
-	return hostNode;
-}
-
-function updateComposite(prevVnode, newVnode) {
-	if (prevVnode.ref && typeof prevVnode.ref === 'function') {
-		prevVnode.ref(null);
-	}
-	//如果newVnode没有定义contextTypes 在componentWillReceiveProps等生命周期方法中
-	//是不应该传入context的 那么用空的temporaryContext代替
-	var temporaryContext = {};
-	var context = newVnode.context || {};
-	if (newVnode.type && newVnode.type.contextTypes) {
-		context = getContextByTypes(context, newVnode.type.contextTypes);
-		temporaryContext = context;
-	}
-	var instance = prevVnode.mayInfo.instance;
-	//empty代表prevVnode为null
-	var isEmpty = !prevVnode.mayInfo.rendered;
-	var hostNode = prevVnode.mayInfo.hostNode;
-	var newDom, newRendered, prevState, prevProps;
-	var skip = false;
-	if (instance) {
-		//需要兼容componentWillReceiveProps直接this.state={///}的情况
-		//先保存下之前的state
-		prevState = instance.state;
-		prevProps = prevVnode.props;
-		//lifeState为3组件开始diff
-		//WillReceive WillUpdate render DidUpdate等周期setState放到下一周期;
-		instance.mayInst.lifeState = 3;
-		//用于mergeState如果setState传入一个function s.call(instance, newState, instance.nextProps || instance.props);
-		//其参数应当是newState nextProps
-		instance.nextProps = newVnode.props;
-		if (instance.getChildContext) {
-			//getChildContext 有可能用到新的props
-			context = getChildContext(instance, context);
-
-		}
-		var newState = mergeState(instance);
-		//如果context与props都没有改变，那么就不会触发组件的receive，render，update等一系列钩子
-		//但还会继续向下比较
-		var needReceive = prevVnode !== newVnode || prevVnode.context !== context;
-		if (needReceive) {
-			if (instance.componentWillReceiveProps) {
-				//componentWillReceiveProps中调用了setState 合并state
-				instance.mayInst.lifeState = 4;
-				instance.componentWillReceiveProps(newVnode.props, temporaryContext);
-				if (instance.mayInst.mergeStateQueue && instance.mayInst.mergeStateQueue.length > 0) {
-					newState = mergeState(instance);
-				} else { //this.state={///}的情况
-					if (instance.state !== prevState) {
-						newState = instance.state;
-						instance.state = prevState;
-					}
-				}
-			}
-			instance.props = newVnode.props;
-		} else {
-			var rendered = prevVnode.mayInfo.rendered;
-			//context穿透更新问题
-			rendered.context = newVnode.temporaryContext || context;
-			hostNode = updateStrategy[rendered.mtype](rendered, rendered);
-			return hostNode;
-		}
-
-		//shouldComponentUpdate 返回false 则不进行子组件渲染
-		if (!instance.mayInst.forceUpdate && instance.shouldComponentUpdate && instance.shouldComponentUpdate(newVnode.props, newState, temporaryContext) === false) {
-			skip = true;
-		} else if (instance.componentWillUpdate) {
-			instance.componentWillUpdate(newVnode.props, newState, temporaryContext);
-		}
-		if (skip) {
-			instance.state = newState;
-			instance.context = context;
-			instance.mayInst.dirty = false;
-			instance.mayInst.hostNode = hostNode;
-			// newVnode.mayInfo.vChildren = transformChildren(newVnode, hostNode);
-			return hostNode;
-		}
-		instance.state = newState;
-		instance.context = context;
-		if (!Refs.currentOwner) {
-			Refs.currentOwner = instance;
-			Refs.currentOwner.refs = {};
-		}
-
-		var prevRendered = prevVnode.mayInfo.rendered;
-		newRendered = instance.render();
-
-		newRendered && (newRendered.context = context);
-		newVnode.mayInfo.rendered = newRendered;
-		newVnode.mayInfo.instance = instance;
-		instance.mayInst.rendered = newRendered;
-		if (!isEmpty && newRendered) {
-			if (isSameType(prevRendered, newRendered)) {
-				hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
-				newRendered.mayInfo.hostNode = hostNode;
-			} else {
-				//componentWillUnmount需要先执行
-				if (prevRendered.mayInfo.instance && prevRendered.mayInfo.instance.componentWillUnmount) {
-					prevRendered.mayInfo.instance.componentWillUnmount();
-					prevRendered.mayInfo.instance.componentWillUnmount = null;
-				}
-				var isSVG = newRendered.mtype === 3;
-				newDom = mountStrategy[newRendered.mtype](newRendered, isSVG);
-				newRendered.mayInfo.hostNode = newDom;
-				hostNode.parentNode.replaceChild(newDom, hostNode);
-			}
-		} else {
-			if (isEmpty && newRendered) {
-				var isSVG = newRendered.mtype === 3;
-				newDom = mountStrategy[newRendered.mtype](newRendered, isSVG);
-				newRendered.mayInfo.hostNode = newDom;
-				if (hostNode.parentNode) {
-					hostNode.parentNode.replaceChild(newDom, hostNode);
-				}
-			}
-			//如果之前node为空 或 新render的为空 直接释放之前节点
-			disposeVnode(prevRendered);
-		}
-		if (!instance.mayInst.needNextRender) {
-			instance.mayInst.dirty = false;
-			instance.mayInst.needNextRender = false;
-		}
-		if (instance.componentDidUpdate) {
-			lifeCycleQueue.push(instance.componentDidUpdate.bind(instance, prevProps, prevState, instance.context));
-		} else {
-			//没有回调初始化为0
-			instance.mayInst.lifeState = 0;
-		}
-		if (newVnode.ref && typeof newVnode.ref === 'function') {
-			lifeCycleQueue.push(newVnode.ref.bind(newVnode, newVnode));
-		}
-		if (newDom) {
-			hostNode = newDom;
-		}
-		instance.mayInst.hostNode = hostNode;
-	} else { //stateless component
-		var prevRendered = prevVnode.mayInfo.rendered;
-		var newRendered = newVnode.type.call(newVnode, newVnode.props, newVnode.context);
-		newRendered.context = newVnode.context;
-		if (prevRendered && isSameType(prevRendered, newRendered)) {
-			hostNode = updateStrategy[newRendered.mtype](prevRendered, newRendered);
-			newRendered.mayInfo.hostNode = hostNode;
-			if (newRendered.ref && typeof newRendered.ref === 'function') {
-				var t = newRendered.mtype === 1 ? hostNode : newRendered;
-				lifeCycleQueue.push(newRendered.ref.bind(t, t));
-			}
-		} else if (newVnode) {
-			var isSVG = newVnode.mtype === 3;
-			newDom = mountStrategy[newVnode.mtype](newVnode, isSVG);
-			newVnode.mayInfo.hostNode = newDom;
-			hostNode.parentNode.replaceChild(newDom, hostNode);
-			hostNode = newDom;
-		}
-
-	}
-	return hostNode;
-}
-
-function updateText(prev, now) {
-	var hostNode = now.mayInfo.hostNode || null;
-	if (prev) { //child._prevVnode
-		if (hostNode.nodeValue !== now.value) {
-			hostNode.nodeValue = now.value;
-		}
-	} else {
-		hostNode = document.createTextNode(now.value);
-	}
-	return hostNode;
 }
 
 function mayUpdate(prevVnode, newVnode, parent) {
 	var dom;
-	if (prevVnode.type === newVnode.type) {
+	if (isSameType(prevVnode, newVnode)) {
 		dom = updateStrategy[newVnode.mtype](prevVnode, newVnode);
 	} else {
 		var isSVG = newVnode.mtype === 3;
 		dom = mountStrategy[newVnode.mtype](newVnode, isSVG);
-		var hostNode = prevVnode.mayInfo.hostNode || null;
+		var hostNode = (prevVnode && prevVnode.mtype === 1) ? prevVnode.mayInfo.hostNode : prevVnode.mayInfo.instance.mayInst.hostNode;
 		if (!parent) {
 			parent = hostNode && hostNode.parentNode;
 		}
@@ -1464,293 +1845,11 @@ function mayUpdate(prevVnode, newVnode, parent) {
 		disposeVnode(prevVnode);
 		hostNode = null;
 	}
-	newVnode.mayInfo.hostNode = dom;
+	// newVnode.mtype === 2 && (newVnode.mayInfo.instance.mayInst.hostNode = dom);
+	// newVnode.mayInfo.hostNode = dom;
 	return dom;
 }
 
-function diffChildren(prevVnode, updatedVnode, parent) {
-	var prevChildren = prevVnode.mayInfo.vChildren || null;
-	var newRenderedChild = updatedVnode.props.children;
-	if (newRenderedChild && !Array.isArray(newRenderedChild)) {
-		newRenderedChild = [newRenderedChild];
-	}
-	//diff之前 遍历prevchildren 与newChildren 如有相同key的只对其props diff
-	var _mountChildren = [];
-	var _unMountChildren = [];
-	var k, prevK, _prevK, _tran;
-	if (newRenderedChild) {
-		var len = newRenderedChild.length;
-		for (var i = 0; i < len; i++) {
-			var c = newRenderedChild[i];
-			var t = typeof c;
-			switch (t) {
-				case 'object':
-					k = genKey(c);
-					//
-					if (c.type && c.type.contextTypes) {
-						c.context = getContextByTypes(updatedVnode.context, c.type.contextTypes);
-					} else {
-						c.context = {};
-						//该组件没有定义contextTypes 无法使用context
-						//我们还是需要保存一份context
-						c.temporaryContext = updatedVnode.context;
-					}
-					break;
-				case 'boolean':
-					k = "#text";
-					_tran = {
-						type: '#text',
-						mtype: 4, //text
-						value: '',
-						mayInfo: {}
-					};
-					c = _tran;
-					break;
-				case 'number':
-				case 'string':
-					k = "#text";
-					_tran = {
-						type: '#text',
-						mtype: 4, //text
-						value: c,
-						mayInfo: {}
-					};
-					c = _tran;
-					//相邻简单数据类型合并
-					if ((i + 1 < newRenderedChild.length)) {
-						var _ntype = typeof newRenderedChild[i + 1];
-						if (_ntype === 'string' || _ntype === 'number') {
-							c.value += newRenderedChild[i + 1];
-							i++;
-						}
-					}
-					break;
-				case 'undefined':
-					break;
-			}
-			prevK = prevChildren && prevChildren[k];
-			if (prevK && prevK.length > 0) { //试试=0 else
-				for (var _i = 0; _i < prevK.length; _i++) {
-					var vnode = prevK[_i];
-					if (c.type === vnode.type && !vnode.mayInfo.used) {
-						c.mayInfo.hostNode = vnode.mayInfo.hostNode;
-						c.mayInfo.instance = vnode.mayInfo.instance;
-						c.mayInfo.prevVnode = vnode;
-						vnode.mayInfo.used = true;
-						c.mayInfo.reused = true;
-						break;
-					}
-				}
-			}
-			if (c) {
-				_mountChildren.push(c);
-			}
-		}
-	}
-	for (var name in prevChildren) {
-		var _c = prevChildren[name];
-		for (let j = 0; j < _c.length; j++) {
-			if (!_c[j].mayInfo.used) _unMountChildren.push(_c[j]);
-		}
-	}
-	flushMounts(_mountChildren, parent);
-	flushUnMounts(_unMountChildren);
-}
-
-function flushMounts(newChildren, parent) {
-	for (var _i = 0; _i < newChildren.length; _i++) {
-		var child = newChildren[_i];
-		var _node = parent.childNodes[_i];
-		var newDom;
-		if (child.mayInfo.prevVnode) { //如果可以复用之前节点
-			newDom = updateStrategy[child.mtype](child.mayInfo.prevVnode, child);
-			if (_node && _node !== newDom) { //移动dom
-				newDom = parent.removeChild(newDom);
-				parent.insertBefore(newDom, _node);
-			} else if (!_node) {
-				parent.appendChild(newDom);
-			}
-		} else { //新增节点
-			var isSVG = child.mtype === 3;
-			// var isSVG = vnode.namespaceURI === "http://www.w3.org/2000/svg";
-			newDom = mountStrategy[child.mtype](child, isSVG);
-			child.mayInfo.hostNode = newDom;
-			if (_node) {
-				parent.insertBefore(newDom, _node);
-			} else {
-				parent.appendChild(newDom);
-			}
-		}
-	}
-}
-
-function flushUnMounts(oldChildren) {
-	var c;
-	while (c = oldChildren.shift()) {
-		disposeVnode(c);
-		c = null;
-	}
-}
-
-//https://segmentfault.com/a/1190000010336457  司徒正美先生写的分析
-//hydrate是最早出现于inferno(另一个著名的react-like框架)，并相邻的简单数据类型合并成一个字符串。
-//因为在react的虚拟DOM体系中，字符串相当于一个文本节点。减少children中的个数，
-//就相当减少实际生成的文本节点的数量，也减少了以后diff的数量，能有效提高性能。
-
-//render过程中有Key的 是最有可能变动的，无Key的很可能不会变（绝大部分情况）
-//把children带Key的放一起  不带Key的放一起（因为他们很可能不变化，顺序也不变减少diff寻找）
-function transformChildren(renderedVnode, parent) {
-	var children = renderedVnode.props.children || null;
-	if (children && !Array.isArray(children)) {
-		children = [children];
-	}
-	var len = children ? children.length : 0;
-	var childList = [].slice.call(parent.childNodes);
-	var result = children ? {} : null;
-	//如有undefined null 简单数据类型合并 noCount++;
-	var noCount = 0;
-	for (var i = 0; i < len; i++) {
-		var c = children[i];
-		var __type = typeof c;
-		switch (__type) {
-			case 'object':
-				if (c.type) {
-					if (c.mayInfo.reused) {
-						//如果该组件 diff 两次 第一次vnode重用之后_reused为true
-						//生成vchildren时需要其为false 否则第二次diff
-						c.mayInfo.reused = false;
-					}
-					var _key = genKey(c);
-					if (!result[_key]) {
-						result[_key] = [c];
-					} else {
-						result[_key].push(c);
-					}
-					if (c.ref) { //如果子dom有ref 标识一下 
-						var owner = renderedVnode.mayInfo.refOwner;
-						if (owner) {
-							if (owner.refs) {
-								owner.refs[c.ref] = c.mayInfo.instance || c.mayInfo.hostNode || null;
-							} else {
-								owner.refs = {};
-								owner.refs[c.ref] = c.mayInfo.instance || c.mayInfo.hostNode || null;
-							}
-						}
-					}
-				} else {
-					var iteratorFn = getIteractor(c);
-					if (iteratorFn) {
-						var ret = callIteractor$1(iteratorFn, c);
-						for (var _i = 0; _i < ret.length; _i++) {
-							var _key = genKey(ret[_i]);
-							if (!result[_key]) {
-								result[_key] = [ret[_i]];
-							} else {
-								result[_key].push(ret[_i]);
-							}
-						}
-					}
-				}
-
-				break;
-			case 'number':
-			case 'string':
-				//相邻的简单数据类型合并成一个字符串
-				var tran = {
-					type: '#text',
-					mtype: 4,
-					value: c,
-					mayInfo: {}
-				};
-				if (childList[i - noCount]) {
-					tran.mayInfo.hostNode = childList[i - noCount];
-				}
-				if ((i + 1 < len)) {
-					var _ntype = typeof children[i + 1 - noCount];
-					if (_ntype === 'string' || _ntype === 'number') {
-						tran.value += children[i + 1 - noCount];
-						noCount++;
-						i++;
-					}
-				}
-				var _k = '#text';
-				if (!result[_k]) {
-					result[_k] = [tran];
-				} else {
-					result[_k].push(tran);
-				}
-				break;
-			default:
-				noCount++;
-				break;
-		}
-	}
-	return result;
-}
-
-function disposeVnode(vnode) {
-	if (!vnode) {
-		return;
-	}
-	var children = vnode.props && vnode.props.children;
-	if (vnode.ref && typeof vnode.ref === 'function') {
-		vnode.ref(null);
-		vnode.ref = null;
-	}
-
-	if (vnode.mayInfo.instance) {
-		if (vnode.mayInfo.instance.setState) {
-			vnode.mayInfo.instance.setState = noop;
-		}
-		if (vnode.mayInfo.instance.componentWillUnmount) {
-			vnode.mayInfo.instance.componentWillUnmount();
-		}
-		vnode.mayInfo.instance.refs = null;
-		vnode.mayInfo.instance = null;
-	}
-	if (vnode.mayInfo.rendered) {
-		disposeVnode(vnode.mayInfo.rendered);
-		vnode.mayInfo.rendered = null;
-	}
-	if (children && children.length > 0) {
-		for (var i = 0; i < children.length; i++) {
-			var c = children[i];
-			var type = typeof c;
-			if (c && type === 'object') {
-				disposeVnode(c);
-			}
-		}
-	} else if (children && typeof children === 'object') {
-		disposeVnode(children);
-	}
-	if (vnode.mayInfo.prevVnode) {
-		vnode.mayInfo.prevVnode = null;
-	}
-	if (vnode.mayInfo.hostNode) {
-		disposeDom(vnode.mayInfo.hostNode);
-		vnode.mayInfo.hostNode = null;
-	}
-	vnode.mayInfo = {};
-	vnode = null;
-}
-
-function disposeDom(dom) {
-	if (dom._listener) {
-		dom._listener = null;
-	}
-	if (dom.parentNode) {
-		dom.parentNode.removeChild(dom);
-		dom = null;
-	}
-}
-
-function genKey(child) {
-	return !child.key ? (child.type.name || child.type) : ('_$' + child.key);
-}
-
-function isSameType(prev, now) {
-	return prev.type === now.type && prev.key === now.key;
-}
 function unmountComponentAtNode(dom) {
 	var lastVnode = dom._lastVnode;
 	if (dom.refs) {
@@ -1772,81 +1871,27 @@ function findDOMNode(ref) {
 		if (ref.nodeType === 1) {
 			return ref;
 		} else {
-			if (ref.mayInst.hostNode) {
-				ret = ref.mayInst.hostNode;
+			var c = ref.mayInst.rendered;
+			while (c) {
+				if (c.mtype === 1) {
+					return c.mayInfo.hostNode;
+				} else if (c.mayInfo.hostNode) {
+					return c.mayInfo.hostNode;
+				}
+				c = c.mayInfo.instance.mayInst.rendered;
 			}
 		}
 	}
 	return ret;
 }
-
-function emptyElement(dom) {
-	var c;
-	while (c = dom.firstChild) {
-		emptyElement(c);
-		dom.removeChild(c);
-	}
-}
-/**
- * 如果instance具备getChildContext方法 则调用
- * @param {component实例} instance 
- * @param {当前上下文} context 
- */
-function getChildContext(instance, context) {
-	var prevProps = instance.props;
-	if (instance.nextProps) {
-		instance.props = instance.nextProps;
-	}
-	var getContext = instance.getChildContext();
-	if (instance.nextProps) {
-		instance.props = prevProps;
-	}
-	if (getContext && typeof getContext === 'object') {
-		if (!context) {
-			context = {};
-		}
-		context = Object.assign(context, getContext);
-	}
-	return context;
-}
-
-var REAL_SYMBOL = typeof Symbol === "function" && Symbol.iterator;
-var FAKE_SYMBOL = "@@iterator";
-
-function getIteractor(a) {
-	var iteratorFn = REAL_SYMBOL && a[REAL_SYMBOL] || a[FAKE_SYMBOL];
-	if (iteratorFn && iteratorFn.call) {
-		return iteratorFn;
-	}
-}
-
-function callIteractor$1(iteratorFn, children) {
-	var iterator = iteratorFn.call(children),
-		step,
-		ret = [];
-	if (iteratorFn !== children.entries) {
-		while (!(step = iterator.next()).done) {
-			ret.push(step.value);
-		}
-	} else {
-		//Map, Set
-		while (!(step = iterator.next()).done) {
-			var entry = step.value;
-			if (entry) {
-				ret.push(entry[1]);
-			}
-		}
-	}
-	return ret;
-}
-
-function noop() { }
 
 function Component(props, context, key, ref) {
     this.props = props;
     this.key = key;
     this.ref = ref;
     this.context = context;
+    //新建个对象存放各种信息
+    this.mayInst = {};
 }
 
 Component.prototype.setState = function (state, callback) {
@@ -1873,7 +1918,7 @@ Component.prototype.setState = function (state, callback) {
     }
 
     switch (lifeState) {
-        case 4: //componentWillReceiveProps触发setState会合并state
+        //componentWillReceiveProps触发setState会合并state
         case 1: //componentWillMount 触发setState会合并state
             return;
         //ComponentWillReceiveProps 中setState  3
@@ -1919,7 +1964,7 @@ Component.prototype.forceUpdate = function (callback) {
 
 };
 Component.prototype.isMounted = function () {
-    return this.mayInst ? (!!this.mayInst.hostNode || this.mayInst.isEmpty) : false;
+    return this.mayInst ? (!!(this.mayInst.rendered && this.mayInst.rendered.mayInfo.hostNode) || this.mayInst.isEmpty) : false;
 };
 
 function PureComponent(props, key, ref, context) {
@@ -2087,6 +2132,9 @@ var May = {
     PropTypes: PropTypes,
     findDOMNode: findDOMNode,
     unmountComponentAtNode: unmountComponentAtNode,
+    isValidElement: function (vnode) {
+        return vnode && vnode.mtype;
+    },
     createFactory: function createFactory(type) {
         console.error("createFactory is deprecated");
         var factory = createElement.bind(null, type);
