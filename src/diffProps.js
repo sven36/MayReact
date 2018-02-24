@@ -2,11 +2,7 @@ import {
     addEvent,
     getBrowserName,
     eventHooks
-} from './event';
-<<<<<<< HEAD
-
-=======
->>>>>>> rewrite
+} from './event'
 import {
     Refs
 } from './Refs';
