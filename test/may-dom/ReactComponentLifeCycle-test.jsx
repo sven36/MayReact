@@ -217,7 +217,6 @@ describe("ReactComponentLifeCycle-test", function() {
         return <div />;
       }
     }
-
     ReactTestUtils.renderIntoDocument(<Component />);
 
   });

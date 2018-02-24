@@ -5,27 +5,31 @@ export function disposeVnode(vnode) {
     if (!vnode) {
         return;
     }
-    var children = vnode.mayInfo.vChildren;
     if (vnode.refType === 1) {
         vnode.ref(null);
         vnode.ref = null;
     }
-
     if (vnode.mayInfo.instance) {
         disposeComponent(vnode, vnode.mayInfo.instance);
+    } else if (vnode.mtype === 1) {
+        disposeDomVnode(vnode);
     }
-
+    vnode.mayInfo = null;
+}
+function disposeDomVnode(vnode) {
+    var children = vnode.mayInfo.vChildren;
     if (children) {
         for (var c in children) {
             children[c].forEach(function (child) {
                 disposeVnode(child);
             })
         }
+        vnode.mayInfo.vChildren = null;
     }
-    // if (vnode.mayInfo.hostNode) {
-    //     disposeDom(vnode.mayInfo.hostNode);
-    // }
-    vnode.mayInfo = {};
+    if (vnode.mayInfo.refOwner) {
+        vnode.mayInfo.refOwner = null;
+    }
+    vnode.mayInfo = null;
 }
 
 export function disposeComponent(vnode, instance) {
@@ -41,12 +45,12 @@ export function disposeComponent(vnode, instance) {
         instance.refs = null;
     }
     if (instance.mayInst.rendered) {
-        vnode.mayInfo.rendered = null;
+        // vnode.mayInfo.rendered = null;
         disposeVnode(instance.mayInst.rendered);
     }
     instance.mayInst.forceUpdate = instance.mayInst.dirty = vnode.mayInfo.instance = instance.mayInst = null;
 }
-var isStandard = 'textContext' in document;
+var isStandard = 'textContent' in document;
 var fragment = document.createDocumentFragment();
 export function disposeDom(dom) {
     if (dom._listener) {
@@ -54,7 +58,7 @@ export function disposeDom(dom) {
     }
     if (dom.nodeType === 1) {
         if (isStandard) {
-            dom.textContext = '';
+            dom.textContent = '';
         } else {
             emptyElement(dom);
         }

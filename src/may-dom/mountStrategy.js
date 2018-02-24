@@ -57,49 +57,47 @@ function mountDOM(vnode, isSVG) {
     vnode.mayInfo.hostNode = hostNode;
     diffProps(null, vnode);
 
-    var children = vnode.props.children || null;
-    if (children && !Array.isArray(children)) {
+    var children = vnode.props.children;
+    if (!Array.isArray(children)) {
         children = [children];
     }
     var props = vnode.props;
     var cdom, c, parentContext;
 
-    if (children) {
-        var len = children.length;
-        for (let i = 0; i < len; i++) {
-            var c = children[i];
-            var type = typeof c;
-            switch (type) {
-                case 'number':
-                case 'string':
-                    cdom = document.createTextNode(c);
-                    if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
-                        cdom.nodeValue += children[i + 1];
-                        i++;
-                    }
+    var len = children.length;
+    for (let i = 0; i < len; i++) {
+        var c = children[i];
+        var type = typeof c;
+        switch (type) {
+            case 'number':
+            case 'string':
+                cdom = document.createTextNode(c);
+                if ((i + 1) < len && (typeof children[i + 1] === 'string')) {
+                    cdom.nodeValue += children[i + 1];
+                    i++;
+                }
+                hostNode.appendChild(cdom);
+                break;
+            case 'object': //vnode
+                if (c.type) {
+                    c.context = getContextByTypes(vnode.context, c.type.contextTypes);
+                    cdom = mountStrategy[c.mtype](c, isSVG);
+                    c.mtype === 2 && (c.mayInfo.instance.mayInst.hostNode = cdom);
                     hostNode.appendChild(cdom);
-                    break;
-                case 'object': //vnode
-                    if (c.type) {
-                        c.context = getContextByTypes(vnode.context, c.type.contextTypes);
-                        cdom = mountStrategy[c.mtype](c, isSVG);
-                        c.mayInfo.hostNode = cdom;
-                        hostNode.appendChild(cdom);
-                    } else { //有可能是子数组iterator
-                        var iteratorFn = getIteractor(c);
-                        if (iteratorFn) {
-                            var ret = callIteractor(iteratorFn, c);
-                            for (var _i = 0; _i < ret.length; _i++) {
-                                cdom = mountStrategy[ret[_i].mtype](ret[_i], isSVG);
-                                ret[_i].mayInfo.hostNode = cdom;
-                                hostNode.appendChild(cdom);
-                            }
+                } else { //有可能是子数组iterator
+                    var iteratorFn = getIteractor(c);
+                    if (iteratorFn) {
+                        var ret = callIteractor(iteratorFn, c);
+                        for (var _i = 0; _i < ret.length; _i++) {
+                            cdom = mountStrategy[ret[_i].mtype](ret[_i], isSVG);
+                            ret[_i].mayInfo.hostNode = cdom;
+                            hostNode.appendChild(cdom);
                         }
                     }
-            }
+                }
         }
-        vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
     }
+    vnode.mayInfo.vChildren = transformChildren(vnode, hostNode);
 
     if (FormElement[vtype]) {
         //如果是受控组件input select之类需要特殊处理下
@@ -133,22 +131,16 @@ function mountComposite(vnode, isSVG) {
             //svg的子节点namespace也是svg
             isSVG = rendered.mtype === 3;
         }
-        //用于子组件改变同步父组件的hostNode
-        // vnode.mayInfo.instance && (rendered.mayInfo.parentInstance = vnode.mayInfo.instance)
         //递归遍历 深度优先
         hostNode = mountStrategy[rendered.mtype](rendered, isSVG);
         //dom diff需要分类一下children以方便diff
         rendered.mayInfo.vChildren = transformChildren(rendered, hostNode);
-        rendered.mayInfo.hostNode = hostNode;
-        vnode.mayInfo.hostNode = hostNode;
-        inst.mayInst.hostNode = hostNode;
+        // rendered.mayInfo.hostNode = hostNode;
     } else { //render 返回null
         hostNode = document.createComment('empty');
         vnode.mayInfo.hostNode = hostNode;
-        vnode.mayInfo.isEmpty = true;
         //用于isMounted 判断 即使是null
         inst.mayInst.isEmpty = true;
-        inst.mayInst.hostNode = hostNode;
     }
     if (inst.componentDidMount) {
         lifeCycleQueue.push(inst.componentDidMount.bind(inst));

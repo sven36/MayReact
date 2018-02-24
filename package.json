@@ -30,6 +30,8 @@
     "karma-webpack": "^2.0.6",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
+    "react-redux": "^5.0.6",
+    "redux": "^3.7.2",
     "rollup": "^0.50.1",
     "rollup-plugin-babel": "^3.0.2",
     "webpack": "^3.8.1"

@@ -70,6 +70,5 @@ export function buildComponentFromVnode(vnode) {
     }
     vnode.mayInfo.instance = inst;
     inst.mayInst.rendered = rendered;
-    vnode.mayInfo.rendered = rendered;
     return rendered;
 }
