@@ -80,7 +80,7 @@
 </head>
 
 <body>
-    <div class="content">
+    <div class="content" id="ems">
         <h3 class="page-header">图片示例</h3>
         <div class="img-container">
             <ul>
@@ -106,6 +106,43 @@
 </body>
 
 </html>
+<script>
+    'use strict'
+    // var a = '1' + 2 + '3' - 4;
+    // alert(a);
+    function foo(params) {
+        var x=2;
+        return function (params) {
+            alert(this.x);
+        }
+    }
+    alert(ems);
+    var x=3;
+    var y=foo();
+    setTimeout(y,1);
+    // y();
+    // foo();
+    // function foo(params) {
+    //     alert('1');
+    // }
+    // var a = true;
+    // if (a) {
+    //     function foo(params) {
+    //         alert('a');
+    //     }
+    // } else {
+    //     function foo(params) {
+    //         alert('b');
+    //     }
+    // }
+    // foo();
+    // for (var i = 0; i < 5; i++) {
+    //     setTimeout(() => {
+    //         console.log(i);
+    //     }, i);
+    // }
+
+</script>
 <script>
     // check_webp_feature:
     //   'feature' can be one of 'lossy', 'lossless', 'alpha' or 'animation'.
