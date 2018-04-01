@@ -321,22 +321,21 @@ describe("Redux", function () {
 		</Provider>,
 		div
 	  );
-	  await browser.pause(100).$apply();
-	  var ass = div.getElementsByTagName("a");
-	  expect(ass.length).toBe(5);
-	  var el = ass[1];
+	//   var ass = div.getElementsByTagName("a");
+	//   expect(ass.length).toBe(5);
+	//   var el = ass[1];
   
-	  await browser
-		.click(el)
-		.pause(200)
-		.$apply();
+	//   await browser
+	// 	.click(el)
+	// 	.pause(200)
+	// 	.$apply();
   
-	  expect(ass.length).toBe(el.className === "add" ? 7 : 5);
-	  await browser
-		.click(ass[4])
-		.pause(100)
-		.$apply();
+	//   expect(ass.length).toBe(el.className === "add" ? 7 : 5);
+	//   await browser
+	// 	.click(ass[4])
+	// 	.pause(100)
+	// 	.$apply();
   
-	  expect(ass.length).toBe(5);
+	//   expect(ass.length).toBe(5);
 	});*/
 });
